@@ -1,0 +1,82 @@
+{% extends 'dashboard/base_dashboard.html' %}
+
+{% block title %}Settings{% endblock %}
+{% block page_title %}Settings{% endblock %}
+{% block page_subtitle %}Shop information and account preferences.{% endblock %}
+
+{% block content %}
+
+<div class="row g-3">
+  <div class="col-12 col-lg-7">
+    <div class="dash-panel">
+      <div class="dash-panel-title"><h3><i class="bi bi-shop"></i> Shop Information</h3></div>
+
+      <form method="post" novalidate>
+        {% csrf_token %}
+
+        <div class="mb-3">
+          <label for="{{ form.name.id_for_label }}" class="form-label fw-semibold">Shop Name</label>
+          {{ form.name }}
+          {% if form.name.errors %}<div class="form-error text-danger small mt-1">{{ form.name.errors|striptags }}</div>{% endif %}
+        </div>
+
+        <div class="mb-3">
+          <label for="{{ form.address.id_for_label }}" class="form-label fw-semibold">Address</label>
+          {{ form.address }}
+        </div>
+
+        <div class="row">
+          <div class="col-6 mb-3">
+            <label for="{{ form.phone.id_for_label }}" class="form-label fw-semibold">Phone</label>
+            {{ form.phone }}
+          </div>
+          <div class="col-6 mb-3">
+            <label for="{{ form.email.id_for_label }}" class="form-label fw-semibold">Email</label>
+            {{ form.email }}
+            {% if form.email.errors %}<div class="form-error text-danger small mt-1">{{ form.email.errors|striptags }}</div>{% endif %}
+          </div>
+        </div>
+
+        <div class="mb-3">
+          <label for="{{ form.hours.id_for_label }}" class="form-label fw-semibold">Opening Hours</label>
+          {{ form.hours }}
+        </div>
+
+        <div class="row">
+          <div class="col-6 mb-3">
+            <label for="{{ form.facebook.id_for_label }}" class="form-label fw-semibold">Facebook URL</label>
+            {{ form.facebook }}
+            {% if form.facebook.errors %}<div class="form-error text-danger small mt-1">{{ form.facebook.errors|striptags }}</div>{% endif %}
+          </div>
+          <div class="col-6 mb-3">
+            <label for="{{ form.instagram.id_for_label }}" class="form-label fw-semibold">Instagram URL</label>
+            {{ form.instagram }}
+            {% if form.instagram.errors %}<div class="form-error text-danger small mt-1">{{ form.instagram.errors|striptags }}</div>{% endif %}
+          </div>
+        </div>
+
+        <button type="submit" class="btn-quick solid">
+          <i class="bi bi-check2-circle"></i> Save Shop Information
+        </button>
+      </form>
+
+      <p class="text-muted mt-3 mb-0" style="font-size:0.8rem;">
+        <i class="bi bi-info-circle"></i> These changes go live immediately across the public site — homepage, navbar, and footer.
+      </p>
+    </div>
+  </div>
+
+  <div class="col-12 col-lg-5">
+    <div class="dash-panel">
+      <div class="dash-panel-title"><h3><i class="bi bi-person-badge"></i> Your Account</h3></div>
+      <p class="mb-1"><strong>{{ request.user.get_full_name|default:"Admin" }}</strong></p>
+      <p class="mb-1 text-muted">{{ request.user.email|default:"No email set" }}</p>
+      <p class="mb-3 text-muted">{% if request.user.is_superuser %}Superuser account{% else %}Staff account{% endif %}</p>
+      <a href="{% url 'dashboard:password_change' %}" class="btn-quick solid w-100 justify-content-center">
+        <i class="bi bi-key"></i> Change Password
+      </a>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

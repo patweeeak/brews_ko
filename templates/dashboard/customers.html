@@ -1,0 +1,71 @@
+{% extends 'dashboard/base_dashboard.html' %}
+{% load shop_extras %}
+
+{% block title %}Customers{% endblock %}
+{% block page_title %}Customers{% endblock %}
+{% block page_subtitle %}Everyone who has ordered from Brew's Ko.{% endblock %}
+
+{% block content %}
+
+<div class="d-flex flex-wrap gap-3 mb-3">
+  <div class="stat-card" style="min-width:200px;">
+    <div class="stat-card-icon bg-blue"><i class="bi bi-people-fill"></i></div>
+    <div class="stat-card-body"><strong>{{ total_customers }}</strong><span>Unique Customers</span></div>
+  </div>
+  <div class="stat-card" style="min-width:200px;">
+    <div class="stat-card-icon bg-purple"><i class="bi bi-person-badge"></i></div>
+    <div class="stat-card-body"><strong>{{ registered_customers.count }}</strong><span>Registered Accounts</span></div>
+  </div>
+</div>
+
+<div class="dash-section-heading">
+  <h2><i class="bi bi-person-badge"></i> Registered Customer Accounts</h2>
+</div>
+<div class="dash-panel mb-4">
+  <div class="dash-table-wrap">
+    <table class="dash-table">
+      <thead><tr><th>Name</th><th>Mobile Number</th><th>Orders</th><th>Favorites</th><th>Points</th><th>Joined</th></tr></thead>
+      <tbody>
+        {% for rc in registered_customers %}
+        <tr>
+          <td>{{ rc.full_name }}</td>
+          <td>{{ rc.mobile_number }}</td>
+          <td>{{ rc.order_count }}</td>
+          <td>{{ rc.fav_count }}</td>
+          <td><span class="points-badge"><i class="bi bi-stars"></i> {{ rc.points }}</span></td>
+          <td>{{ rc.created_at|date:"M d, Y" }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="6"><div class="dash-empty"><i class="bi bi-person-badge"></i>No registered customer accounts yet.</div></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="dash-section-heading">
+  <h2><i class="bi bi-receipt"></i> Order History by Customer</h2>
+  <span class="text-muted" style="font-size:0.82rem;">Includes guest checkouts (no account required)</span>
+</div>
+<div class="dash-panel">
+  <div class="dash-table-wrap">
+    <table class="dash-table">
+      <thead><tr><th>Name</th><th>Contact Number</th><th>Orders Placed</th><th>Total Spent</th><th>Last Order</th></tr></thead>
+      <tbody>
+        {% for c in customers %}
+        <tr>
+          <td>{{ c.customer_name }}</td>
+          <td>{{ c.contact_number }}</td>
+          <td>{{ c.order_count }}</td>
+          <td>{{ c.total_spent|peso }}</td>
+          <td>{{ c.last_order_date|date:"M d, Y" }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5"><div class="dash-empty"><i class="bi bi-people"></i>No customers yet.</div></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% endblock %}

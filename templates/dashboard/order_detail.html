@@ -1,0 +1,62 @@
+{% extends 'dashboard/base_dashboard.html' %}
+{% load shop_extras %}
+
+{% block title %}Order #{{ order.id }}{% endblock %}
+{% block page_title %}Order #{{ order.id }}{% endblock %}
+{% block page_subtitle %}Placed {{ order.created_at|date:"M d, Y g:i A" }}{% endblock %}
+
+{% block content %}
+
+<a href="{% url 'dashboard:orders' %}" class="btn-quick mb-3"><i class="bi bi-arrow-left"></i> Back to Orders</a>
+
+<div class="row g-3">
+  <div class="col-12 col-lg-7">
+    <div class="dash-panel">
+      <div class="dash-panel-title"><h3><i class="bi bi-basket"></i> Items Ordered</h3></div>
+      <div class="dash-table-wrap">
+        <table class="dash-table">
+          <thead><tr><th>Product</th><th>Unit Price</th><th>Qty</th><th>Subtotal</th></tr></thead>
+          <tbody>
+            {% for item in order.items.all %}
+            <tr>
+              <td>{{ item.product_name }}</td>
+              <td>{{ item.unit_price|peso }}</td>
+              <td>{{ item.quantity }}</td>
+              <td>{{ item.subtotal|peso }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <div class="d-flex justify-content-end mt-2">
+        <strong style="font-size:1.1rem;color:var(--coffee-dark);">Total: {{ order.total_amount|peso }}</strong>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-12 col-lg-5">
+    <div class="dash-panel mb-3">
+      <div class="dash-panel-title"><h3><i class="bi bi-person"></i> Customer</h3></div>
+      <p class="mb-1"><strong>{{ order.customer_name }}</strong></p>
+      <p class="mb-1 text-muted">{{ order.contact_number }}</p>
+      {% if order.notes %}<p class="mb-0 mt-2"><em>"{{ order.notes }}"</em></p>{% endif %}
+    </div>
+
+    <div class="dash-panel">
+      <div class="dash-panel-title"><h3><i class="bi bi-info-circle"></i> Order Status</h3></div>
+      <span class="status-pill status-{{ order.status }}" style="font-size:0.9rem;">{{ order.get_status_display }}</span>
+      <p class="text-muted mt-2 mb-3" style="font-size:0.85rem;">Last updated {{ order.updated_at|timesince }} ago</p>
+
+      <form method="post" class="dash-status-form">
+        {% csrf_token %}
+        <label for="{{ status_form.status.id_for_label }}" class="form-label fw-semibold">Update Status</label>
+        {{ status_form.status }}
+        <button type="submit" class="btn-quick solid w-100 justify-content-center mt-2">
+          <i class="bi bi-check2-circle"></i> Save Status
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

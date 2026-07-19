@@ -1,0 +1,164 @@
+{% extends 'base.html' %}
+{% load shop_extras %}
+
+{% block title %}My Account — {{ shop_name }}{% endblock %}
+
+{% block content %}
+<section class="checkout-section">
+  <div class="container">
+    <div class="text-center mb-5">
+      <p class="section-eyebrow reveal-fade">My Account</p>
+      <h1 class="section-title reveal-fade">Hi, {{ profile.full_name|default:request.user.username }}!</h1>
+    </div>
+
+    <div class="row g-4">
+      <!-- Profile + stats -->
+      <div class="col-12 col-lg-5">
+        <div class="checkout-form-card reveal-fade mb-4 text-center">
+          {% if profile.photo %}
+            <img src="{{ profile.photo.url }}" alt="{{ profile.full_name }}" class="profile-avatar mb-3">
+          {% else %}
+            <div class="profile-avatar profile-avatar-placeholder mb-3"><i class="bi bi-person-fill"></i></div>
+          {% endif %}
+          <h3 class="mb-1">{{ profile.full_name }}</h3>
+          <p class="text-muted mb-3">{{ profile.mobile_number }}</p>
+
+          {% if gamification.enabled %}
+            <div class="points-summary mb-3">
+              <i class="bi bi-stars"></i>
+              <div>
+                <strong>{{ profile.points }} pts</strong>
+                <span>{{ gamification.program_name }}</span>
+              </div>
+            </div>
+          {% endif %}
+
+          <div class="profile-stats-row">
+            <div><strong>{{ profile.total_orders }}</strong><span>Orders</span></div>
+            <div><strong>{{ profile.total_spent|peso }}</strong><span>Spent</span></div>
+            <div><strong>{{ profile.favorite_count }}</strong><span>Favorites</span></div>
+          </div>
+        </div>
+
+        <div class="checkout-form-card reveal-fade">
+          <h3><i class="bi bi-pencil-square"></i> Edit Profile</h3>
+          <form method="post" enctype="multipart/form-data" novalidate>
+            {% csrf_token %}
+            <div class="mb-3">
+              <label for="{{ form.full_name.id_for_label }}" class="form-label">{{ form.full_name.label }}</label>
+              {{ form.full_name }}
+            </div>
+            <div class="mb-3">
+              <label for="{{ form.mobile_number.id_for_label }}" class="form-label">{{ form.mobile_number.label }}</label>
+              {{ form.mobile_number }}
+              {% if form.mobile_number.errors %}<div class="form-error">{{ form.mobile_number.errors|striptags }}</div>{% endif %}
+            </div>
+            <div class="mb-3">
+              <label for="{{ form.photo.id_for_label }}" class="form-label">{{ form.photo.label }}</label>
+              {{ form.photo }}
+            </div>
+            <button type="submit" class="btn btn-brand w-100"><i class="bi bi-check2-circle"></i> Save Changes</button>
+          </form>
+
+          <form method="post" action="{% url 'shop:logout' %}" class="mt-2">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-brand-outline w-100"><i class="bi bi-box-arrow-right"></i> Log Out</button>
+          </form>
+        </div>
+      </div>
+
+      <!-- Orders + Favorites -->
+      <div class="col-12 col-lg-7">
+        <div class="checkout-form-card reveal-fade mb-4">
+          <h3><i class="bi bi-receipt"></i> Recent Orders</h3>
+          {% for order in orders %}
+            <div class="cart-summary-row">
+              <span>#{{ order.id }} — {{ order.get_status_display }} <span class="text-muted">({{ order.created_at|date:"M d, Y" }})</span></span>
+              <span>{{ order.total_amount|peso }}</span>
+            </div>
+          {% empty %}
+            <p class="text-muted mb-0">You haven't placed any orders yet — <a href="{% url 'shop:menu' %}">browse the menu</a>.</p>
+          {% endfor %}
+        </div>
+
+        <div class="checkout-form-card reveal-fade">
+          <h3><i class="bi bi-heart"></i> Your Favorites</h3>
+          {% if favorites %}
+            <div class="row g-3">
+              {% for product in favorites %}
+                <div class="col-12 col-sm-6">
+                  <div class="favorite-mini-card">
+                    <a href="{% url 'shop:product_detail' product.slug %}">{{ product.name }}</a>
+                    <span class="text-muted d-block">{{ product.price|peso }}</span>
+                    <form method="post" action="{% url 'shop:toggle_favorite' product.id %}" class="mt-1">
+                      {% csrf_token %}
+                      <input type="hidden" name="next" value="{% url 'shop:profile' %}">
+                      <button type="submit" class="btn btn-sm btn-brand-outline"><i class="bi bi-heart-fill"></i> Remove</button>
+                    </form>
+                  </div>
+                </div>
+              {% endfor %}
+            </div>
+          {% else %}
+            <p class="text-muted mb-0">No favorites yet — tap the heart on any product to save it here.</p>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <div class="row g-4 mt-1">
+      <!-- Rate the store -->
+      <div class="col-12 col-lg-5">
+        <div class="checkout-form-card reveal-fade">
+          <h3><i class="bi bi-shop"></i> Rate Brew's Ko</h3>
+          {% if store_review_form %}
+            <form method="post" action="{% url 'shop:review_add' %}" enctype="multipart/form-data">
+              {% csrf_token %}
+              <input type="hidden" name="next" value="{% url 'shop:profile' %}">
+              <label class="form-label fw-semibold d-block">Your Rating</label>
+              <div class="star-picker mb-3">
+                {% for radio in store_review_form.rating %}
+                  {{ radio.tag }}<label for="{{ radio.id_for_label }}">★</label>
+                {% endfor %}
+              </div>
+              <div class="mb-3">{{ store_review_form.comment }}</div>
+              <div class="mb-3">
+                <label class="form-label">Attach a photo (optional)</label>
+                {{ store_review_form.image }}
+              </div>
+              <button type="submit" class="btn btn-brand w-100"><i class="bi bi-chat-square-text"></i> Post Review</button>
+            </form>
+          {% else %}
+            <p class="text-muted mb-0">You've already reviewed Brew's Ko — thank you! See it below in "My Reviews".</p>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- My Reviews -->
+      <div class="col-12 col-lg-7">
+        <div class="checkout-form-card reveal-fade">
+          <h3><i class="bi bi-chat-square-text"></i> My Reviews</h3>
+          {% for review in my_reviews %}
+            <div class="review-card">
+              <div class="review-card-header">
+                <strong>{% if review.product %}{{ review.product.name }}{% else %}Brew's Ko (Store){% endif %}</strong>
+                <time>{{ review.created_at|date:"M d, Y" }}</time>
+              </div>
+              <span class="star-rating-display">{% for i in "12345" %}{% if forloop.counter <= review.rating %}★{% else %}<span class="empty">★</span>{% endif %}{% endfor %}</span>
+              <p class="mb-2 mt-2">{{ review.comment }}</p>
+              {% if review.image %}<img src="{{ review.image.url }}" alt="" class="review-card-image mb-2">{% endif %}
+              <form method="post" action="{% url 'shop:review_delete' review.id %}">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{% url 'shop:profile' %}">
+                <button type="submit" class="btn btn-sm btn-brand-outline"><i class="bi bi-trash3"></i> Delete</button>
+              </form>
+            </div>
+          {% empty %}
+            <p class="text-muted mb-0">You haven't left any reviews yet.</p>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

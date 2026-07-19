@@ -1,0 +1,61 @@
+{% extends 'base.html' %}
+
+{% block title %}About — {{ shop_name }}{% endblock %}
+
+{% block content %}
+<section class="menu-header">
+  <div class="container text-center">
+    <p class="section-eyebrow reveal-fade">Our Story</p>
+    <h1 class="section-title reveal-fade">About {{ shop_name }}</h1>
+  </div>
+</section>
+
+<section class="about-section">
+  <div class="container">
+    <div class="row align-items-center gy-5">
+      <div class="col-12 col-lg-6">
+        <div class="about-image-wrap reveal-fade">
+          <img src="https://images.unsplash.com/photo-1442512595331-e89e73853f31?w=800&q=80" alt="Brew's Ko coffee shop counter" class="about-image" loading="lazy">
+        </div>
+      </div>
+      <div class="col-12 col-lg-6">
+        <h2 class="section-title reveal-fade">Our Philosophy</h2>
+        <p class="about-text reveal-fade">
+          Every cup at Brew's Ko starts with a simple belief: good coffee brings people together. We roast
+          in small batches, source directly from growers we trust, and brew each order by hand — because
+          coffee made with care simply tastes better.
+        </p>
+        <p class="about-text reveal-fade">
+          Step inside and you'll find warm wood tones, soft lighting, and the quiet hum of conversation.
+          Whether you're grabbing a quick espresso on your way to work or settling in for an afternoon
+          with a book, Brew's Ko is your space to pause.
+        </p>
+      </div>
+    </div>
+
+    <div class="row g-4 mt-5">
+      <div class="col-12 col-md-4">
+        <div class="location-card reveal-fade">
+          <i class="bi bi-flower1"></i>
+          <h4>Ethically Sourced</h4>
+          <p>Direct-trade beans from farms we know by name.</p>
+        </div>
+      </div>
+      <div class="col-12 col-md-4">
+        <div class="location-card reveal-fade">
+          <i class="bi bi-cup-hot"></i>
+          <h4>Handcrafted Daily</h4>
+          <p>Every drink brewed to order, never rushed.</p>
+        </div>
+      </div>
+      <div class="col-12 col-md-4">
+        <div class="location-card reveal-fade">
+          <i class="bi bi-house-heart"></i>
+          <h4>Cozy by Design</h4>
+          <p>A relaxing atmosphere built for lingering.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

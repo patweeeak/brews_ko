@@ -1,0 +1,72 @@
+{% extends 'base.html' %}
+{% load shop_extras %}
+
+{% block title %}Checkout — {{ shop_name }}{% endblock %}
+
+{% block content %}
+<section class="checkout-section">
+  <div class="container">
+    <div class="text-center mb-5">
+      <p class="section-eyebrow reveal-fade">Almost There</p>
+      <h1 class="section-title reveal-fade">Checkout</h1>
+      <p class="section-subtitle reveal-fade">Just a couple of details and we'll get brewing.</p>
+    </div>
+
+    <div class="row g-4 justify-content-center">
+      <div class="col-12 col-lg-6">
+        <div class="checkout-form-card reveal-fade">
+          <h3><i class="bi bi-person-lines-fill"></i> Your Details</h3>
+          <form method="post" novalidate>
+            {% csrf_token %}
+            <div class="mb-3">
+              <label for="{{ form.customer_name.id_for_label }}" class="form-label">{{ form.customer_name.label }}</label>
+              {{ form.customer_name }}
+              {% if form.customer_name.errors %}<div class="form-error">{{ form.customer_name.errors|striptags }}</div>{% endif %}
+            </div>
+            <div class="mb-3">
+              <label for="{{ form.contact_number.id_for_label }}" class="form-label">{{ form.contact_number.label }}</label>
+              {{ form.contact_number }}
+              {% if form.contact_number.errors %}<div class="form-error">{{ form.contact_number.errors|striptags }}</div>{% endif %}
+            </div>
+            <div class="mb-3">
+              <label class="form-label d-block">{{ form.dining_option.label }}</label>
+              <div class="dining-option-choices">
+                {% for radio in form.dining_option %}
+                  <label class="dining-option-pill">
+                    {{ radio.tag }}
+                    <span>{% if radio.data.value == 'for_here' %}<i class="bi bi-cup-hot"></i>{% else %}<i class="bi bi-bag-check"></i>{% endif %} {{ radio.choice_label }}</span>
+                  </label>
+                {% endfor %}
+              </div>
+              {% if form.dining_option.errors %}<div class="form-error">{{ form.dining_option.errors|striptags }}</div>{% endif %}
+            </div>
+            <div class="mb-3">
+              <label for="{{ form.notes.id_for_label }}" class="form-label">{{ form.notes.label }}</label>
+              {{ form.notes }}
+            </div>
+            <button type="submit" class="btn btn-brand btn-lg w-100 mt-2">
+              <i class="bi bi-check2-circle"></i> Place Order
+            </button>
+          </form>
+        </div>
+      </div>
+
+      <div class="col-12 col-lg-5">
+        <div class="cart-summary reveal-fade">
+          <h3>Order Review</h3>
+          {% for item in cart %}
+            <div class="cart-summary-row">
+              <span>{{ item.quantity }} × {{ item.product.name }}{% if item.size_label %} ({{ item.size_label }}){% endif %}</span>
+              <span>{{ item.total_price|peso }}</span>
+            </div>
+          {% endfor %}
+          <div class="cart-summary-row cart-summary-total">
+            <span>Total Amount</span>
+            <span>{{ cart.get_total_price|peso }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

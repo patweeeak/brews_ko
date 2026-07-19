@@ -1,0 +1,70 @@
+{% extends 'base.html' %}
+{% load shop_extras %}
+
+{% block title %}Your Cart — {{ shop_name }}{% endblock %}
+
+{% block content %}
+<section class="cart-section">
+  <div class="container">
+    <div class="text-center mb-5">
+      <p class="section-eyebrow reveal-fade">Your Order</p>
+      <h1 class="section-title reveal-fade">Shopping Cart</h1>
+    </div>
+
+    {% if cart.is_empty %}
+      <div class="empty-state cart-empty reveal-fade">
+        <i class="bi bi-bag-x"></i>
+        <p>Your cart is empty. Time to treat yourself!</p>
+        <a href="{% url 'shop:menu' %}" class="btn btn-brand mt-3">Browse the Menu</a>
+      </div>
+    {% else %}
+      <div class="row g-4">
+        <div class="col-12 col-lg-8">
+          <div class="cart-items reveal-fade">
+            {% for item in cart %}
+              <div class="cart-item">
+                {% if item.product.image %}
+                  <img src="{{ item.product.image.url }}" alt="{{ item.product.name }}" class="cart-item-img">
+                {% else %}
+                  <img src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?w=200&q=80" alt="{{ item.product.name }}" class="cart-item-img">
+                {% endif %}
+                <div class="cart-item-info">
+                  <h3><a href="{% url 'shop:product_detail' item.product.slug %}">{{ item.product.name }}{% if item.size_label %} <span class="size-badge">{{ item.size_label }}</span>{% endif %}</a></h3>
+                  <p class="cart-item-price">{{ item.price|peso }} each</p>
+                </div>
+                <form method="post" action="{% url 'shop:cart_update' item.key %}" class="cart-item-qty-form">
+                  {% csrf_token %}
+                  <button type="submit" name="quantity" value="{{ item.quantity|add:'-1' }}" class="qty-btn" aria-label="Decrease quantity">−</button>
+                  <input type="number" name="quantity" value="{{ item.quantity }}" min="1" max="50" class="qty-input" onchange="this.form.submit()">
+                  <button type="submit" name="quantity" value="{{ item.quantity|add:'1' }}" class="qty-btn" aria-label="Increase quantity">+</button>
+                </form>
+                <div class="cart-item-total">{{ item.total_price|peso }}</div>
+                <form method="post" action="{% url 'shop:cart_remove' item.key %}" class="cart-item-remove-form">
+                  {% csrf_token %}
+                  <button type="submit" class="cart-item-remove" aria-label="Remove item"><i class="bi bi-trash3"></i></button>
+                </form>
+              </div>
+            {% endfor %}
+          </div>
+          <a href="{% url 'shop:menu' %}" class="back-to-menu-link"><i class="bi bi-arrow-left"></i> Continue Browsing</a>
+        </div>
+
+        <div class="col-12 col-lg-4">
+          <div class="cart-summary reveal-fade">
+            <h3>Order Summary</h3>
+            <div class="cart-summary-row">
+              <span>Items ({{ cart|length }})</span>
+              <span>{{ cart.get_total_price|peso }}</span>
+            </div>
+            <div class="cart-summary-row cart-summary-total">
+              <span>Total</span>
+              <span>{{ cart.get_total_price|peso }}</span>
+            </div>
+            <a href="{% url 'shop:checkout' %}" class="btn btn-brand btn-lg w-100 mt-3">Proceed to Checkout</a>
+          </div>
+        </div>
+      </div>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

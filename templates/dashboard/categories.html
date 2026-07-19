@@ -1,0 +1,42 @@
+{% extends 'dashboard/base_dashboard.html' %}
+{% load shop_extras %}
+
+{% block title %}Categories{% endblock %}
+{% block page_title %}Categories{% endblock %}
+{% block page_subtitle %}Organize your menu into categories.{% endblock %}
+
+{% block content %}
+
+<div class="d-flex justify-content-between flex-wrap gap-2 mb-3">
+  <div class="stat-card" style="min-width:180px;">
+    <div class="stat-card-icon bg-pink"><i class="bi bi-tags-fill"></i></div>
+    <div class="stat-card-body"><strong>{{ categories.count }}</strong><span>Total Categories</span></div>
+  </div>
+  <a href="{% url 'dashboard:category_add' %}" class="btn-quick solid align-self-center"><i class="bi bi-plus-lg"></i> Add Category</a>
+</div>
+
+<div class="dash-panel">
+  <div class="dash-table-wrap">
+    <table class="dash-table">
+      <thead><tr><th>Category</th><th>Slug</th><th>Drink?</th><th>Products</th><th>Actions</th></tr></thead>
+      <tbody>
+        {% for category in categories %}
+        <tr>
+          <td>{{ category.name }}</td>
+          <td>{{ category.slug }}</td>
+          <td>{% if category.is_drink %}<span class="status-pill status-completed">Yes</span>{% else %}<span class="status-pill status-cancelled">No</span>{% endif %}</td>
+          <td>{{ category.product_count }}</td>
+          <td>
+            <a href="{% url 'shop:menu' %}?category={{ category.slug }}" class="dash-icon-btn" title="View on site" target="_blank"><i class="bi bi-eye"></i></a>
+            <a href="{% url 'dashboard:category_edit' category.id %}" class="dash-icon-btn edit" title="Edit"><i class="bi bi-pencil"></i></a>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5"><div class="dash-empty"><i class="bi bi-tags"></i>No categories yet.</div></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% endblock %}

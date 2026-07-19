@@ -1,0 +1,55 @@
+{% extends 'base.html' %}
+{% load shop_extras %}
+
+{% block title %}Order Confirmed — {{ shop_name }}{% endblock %}
+
+{% block content %}
+<section class="order-success-section">
+  <div class="container">
+    <div class="order-success-card reveal-fade">
+      <div class="order-success-icon"><i class="bi bi-check-circle-fill"></i></div>
+      <h1>Thank you for your order!</h1>
+      <p class="order-success-sub">We've received it and we're getting your order ready with care.</p>
+
+      <div class="order-success-details">
+        <div class="row text-start g-3">
+          <div class="col-6">
+            <span class="detail-label">Order Number</span>
+            <span class="detail-value">#{{ order.id }}</span>
+          </div>
+          <div class="col-6">
+            <span class="detail-label">Status</span>
+            <span class="detail-value status-pill status-{{ order.status }}">{{ order.get_status_display }}</span>
+          </div>
+          <div class="col-6">
+            <span class="detail-label">Name</span>
+            <span class="detail-value">{{ order.customer_name }}</span>
+          </div>
+          <div class="col-6">
+            <span class="detail-label">Contact</span>
+            <span class="detail-value">{{ order.contact_number }}</span>
+          </div>
+        </div>
+
+        <hr>
+
+        <div class="order-success-items text-start">
+          {% for item in order.items.all %}
+            <div class="cart-summary-row">
+              <span>{{ item.quantity }} × {{ item.product_name }}</span>
+              <span>{{ item.subtotal|peso }}</span>
+            </div>
+          {% endfor %}
+          <div class="cart-summary-row cart-summary-total">
+            <span>Total Amount</span>
+            <span>{{ order.total_amount|peso }}</span>
+          </div>
+        </div>
+      </div>
+
+      <a href="{% url 'shop:menu' %}" class="btn btn-brand btn-lg mt-4">Order More</a>
+      <a href="{% url 'shop:home' %}" class="back-to-menu-link d-block mt-3">Back to Home</a>
+    </div>
+  </div>
+</section>
+{% endblock %}

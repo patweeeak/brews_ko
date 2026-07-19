@@ -1,0 +1,97 @@
+{% extends 'base.html' %}
+{% load shop_extras %}
+
+{% block title %}Menu — {{ shop_name }}{% endblock %}
+
+{% block content %}
+<section class="menu-header">
+  <div class="container text-center">
+    <p class="section-eyebrow reveal-fade">Our Menu</p>
+    <h1 class="section-title reveal-fade">Handcrafted, Just for You</h1>
+    <p class="section-subtitle reveal-fade">Browse our full lineup of coffee, drinks, and treats.</p>
+
+    <form method="get" class="menu-search reveal-fade" role="search">
+      {% if selected_category %}<input type="hidden" name="category" value="{{ selected_category }}">{% endif %}
+      <i class="bi bi-search"></i>
+      <input type="search" name="q" value="{{ query }}" placeholder="Search the menu…" class="form-control" aria-label="Search products">
+      {% if query %}
+        <a href="?{% if selected_category %}category={{ selected_category }}{% endif %}" class="menu-search-clear" aria-label="Clear search"><i class="bi bi-x-circle"></i></a>
+      {% endif %}
+    </form>
+  </div>
+</section>
+
+<section class="menu-section">
+  <div class="container">
+    <div class="category-chips reveal-fade" role="tablist" aria-label="Filter by category">
+      <a href="?{% if query %}q={{ query }}{% endif %}" class="chip {% if not selected_category %}active{% endif %}">All</a>
+      {% for category in categories %}
+        <a href="?category={{ category.slug }}{% if query %}&q={{ query }}{% endif %}"
+           class="chip {% if selected_category == category.slug %}active{% endif %}">
+          {{ category.name }}
+        </a>
+      {% endfor %}
+    </div>
+
+    <div class="row g-4 mt-1">
+      {% for product in products %}
+        <div class="col-12 col-sm-6 col-lg-4">
+          <div class="product-card reveal-card">
+            <a href="{% url 'shop:product_detail' product.slug %}" class="product-card-img-link">
+              {% if product.image %}
+                <img src="{{ product.image.url }}" alt="{{ product.name }}" class="product-card-img" loading="lazy">
+              {% else %}
+                <img src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?w=600&q=80" alt="{{ product.name }}" class="product-card-img" loading="lazy">
+              {% endif %}
+              {% if product.featured %}<span class="product-card-badge">Featured</span>{% endif %}
+            </a>
+            {% if customer_profile %}
+              <form method="post" action="{% url 'shop:toggle_favorite' product.id %}" class="product-card-favorite">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                <button type="submit" class="favorite-btn {% if product.id in favorite_ids %}is-favorited{% endif %}" title="Toggle favorite">
+                  <i class="bi {% if product.id in favorite_ids %}bi-heart-fill{% else %}bi-heart{% endif %}"></i>
+                </button>
+              </form>
+            {% endif %}
+            <div class="product-card-body">
+              <span class="product-card-category">{{ product.category.name }}</span>
+              <h3 class="product-card-title">
+                <a href="{% url 'shop:product_detail' product.slug %}">{{ product.name }}</a>
+              </h3>
+              <p class="product-card-desc">{{ product.description|truncatewords:12 }}</p>
+              <div class="d-flex gap-2 mb-2 flex-wrap">
+                {% if product.has_large_option %}<span class="size-badge">2 sizes</span>{% endif %}
+                {% if gamification_enabled and product.points > 0 %}<span class="points-badge"><i class="bi bi-stars"></i> +{{ product.points }}</span>{% endif %}
+              </div>
+              <div class="product-card-footer">
+                <span class="product-card-price">{% if product.has_large_option %}From {% endif %}{{ product.price|peso }}</span>
+                <form method="post" action="{% url 'shop:cart_add' product.id %}">
+                  {% csrf_token %}
+                  <input type="hidden" name="quantity" value="1">
+                  {% if product.category.is_drink %}<input type="hidden" name="size" value="regular">{% endif %}
+                  <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                  <button type="submit" class="btn btn-add-cart" title="{% if product.has_large_option %}Adds Regular size — pick Large on the product page{% endif %}"><i class="bi bi-bag-plus"></i> Add</button>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+      {% empty %}
+        <div class="col-12">
+          <div class="empty-state">
+            <i class="bi bi-emoji-frown"></i>
+            <p>
+              {% if query %}
+                No products match "<strong>{{ query }}</strong>". Try a different search.
+              {% else %}
+                No products found in this category yet.
+              {% endif %}
+            </p>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endblock %}

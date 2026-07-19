@@ -1,0 +1,52 @@
+<footer class="site-footer">
+  <div class="container">
+    <div class="row gy-4">
+      <div class="col-12 col-md-4">
+        <a href="{% url 'shop:home' %}" class="footer-brand">
+          <i class="bi bi-cup-hot-fill brand-icon"></i>
+          <span>{{ shop_name|default:"Brew's Ko" }}</span>
+        </a>
+        <p class="footer-tagline">Brewed with passion, served with comfort. Your neighborhood spot for handcrafted coffee and cozy moments.</p>
+        <div class="footer-social">
+          <a href="{{ shop_facebook }}" target="_blank" rel="noopener" aria-label="Facebook"><i class="bi bi-facebook"></i></a>
+          <a href="{{ shop_instagram }}" target="_blank" rel="noopener" aria-label="Instagram"><i class="bi bi-instagram"></i></a>
+        </div>
+      </div>
+
+      <div class="col-6 col-md-2">
+        <h6 class="footer-heading">Explore</h6>
+        <ul class="footer-links">
+          <li><a href="{% url 'shop:home' %}">Home</a></li>
+          <li><a href="{% url 'shop:menu' %}">Menu</a></li>
+          <li><a href="{% url 'shop:about' %}">About</a></li>
+          <li><a href="{% url 'shop:cart_detail' %}">Cart</a></li>
+        </ul>
+      </div>
+
+      <div class="col-6 col-md-2">
+        <h6 class="footer-heading">Categories</h6>
+        <ul class="footer-links">
+          <li><a href="{% url 'shop:menu' %}?category=espresso">Espresso</a></li>
+          <li><a href="{% url 'shop:menu' %}?category=latte">Latte</a></li>
+          <li><a href="{% url 'shop:menu' %}?category=pastries">Pastries</a></li>
+        </ul>
+      </div>
+
+      <div class="col-12 col-md-4">
+        <h6 class="footer-heading">Contact Us</h6>
+        <ul class="footer-contact">
+          <li><i class="bi bi-geo-alt"></i> {{ shop_address }}</li>
+          <li><i class="bi bi-telephone"></i> {{ shop_phone }}</li>
+          <li><i class="bi bi-envelope"></i> {{ shop_email }}</li>
+          <li><i class="bi bi-clock"></i> {{ shop_hours }}</li>
+        </ul>
+      </div>
+    </div>
+
+    <hr class="footer-divider">
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-center gap-2 pb-3">
+      <p class="mb-0 footer-copy">&copy; {% now "Y" %} {{ shop_name|default:"Brew's Ko" }}. All rights reserved.</p>
+      <p class="mb-0 footer-copy">Made with <i class="bi bi-heart-fill" style="color:#c0785a;"></i> and a lot of coffee.</p>
+    </div>
+  </div>
+</footer>

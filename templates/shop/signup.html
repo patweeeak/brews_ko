@@ -1,0 +1,69 @@
+{% extends 'base.html' %}
+
+{% block title %}Sign Up — {{ shop_name }}{% endblock %}
+
+{% block content %}
+<section class="checkout-section">
+  <div class="container">
+    <div class="text-center mb-5">
+      <p class="section-eyebrow reveal-fade">Join Us</p>
+      <h1 class="section-title reveal-fade">Create Your Account</h1>
+      <p class="section-subtitle reveal-fade">Save your details, track your orders, and favorite your go-tos.</p>
+    </div>
+
+    <div class="row justify-content-center">
+      <div class="col-12 col-lg-6">
+        <div class="checkout-form-card reveal-fade">
+          <h3><i class="bi bi-person-plus"></i> Your Details</h3>
+          <form method="post" novalidate>
+            {% csrf_token %}
+
+            <div class="mb-3">
+              <label for="{{ form.full_name.id_for_label }}" class="form-label">{{ form.full_name.label }}</label>
+              {{ form.full_name }}
+              {% if form.full_name.errors %}<div class="form-error">{{ form.full_name.errors|striptags }}</div>{% endif %}
+            </div>
+
+            <div class="mb-3">
+              <label for="{{ form.mobile_number.id_for_label }}" class="form-label">{{ form.mobile_number.label }}</label>
+              {{ form.mobile_number }}
+              {% if form.mobile_number.errors %}<div class="form-error">{{ form.mobile_number.errors|striptags }}</div>{% endif %}
+            </div>
+
+            <div class="mb-3">
+              <label for="{{ form.username.id_for_label }}" class="form-label">Username</label>
+              {{ form.username }}
+              {% if form.username.errors %}<div class="form-error">{{ form.username.errors|striptags }}</div>{% endif %}
+            </div>
+
+            <div class="mb-3">
+              <label for="{{ form.email.id_for_label }}" class="form-label">Email <span class="text-muted">(optional)</span></label>
+              {{ form.email }}
+            </div>
+
+            <div class="mb-3">
+              <label for="{{ form.password1.id_for_label }}" class="form-label">Password</label>
+              {{ form.password1 }}
+              {% if form.password1.errors %}<div class="form-error">{{ form.password1.errors|striptags }}</div>{% endif %}
+            </div>
+
+            <div class="mb-3">
+              <label for="{{ form.password2.id_for_label }}" class="form-label">Confirm Password</label>
+              {{ form.password2 }}
+              {% if form.password2.errors %}<div class="form-error">{{ form.password2.errors|striptags }}</div>{% endif %}
+            </div>
+
+            <button type="submit" class="btn btn-brand btn-lg w-100 mt-2">
+              <i class="bi bi-check2-circle"></i> Create Account
+            </button>
+          </form>
+
+          <p class="text-center mt-3 mb-0" style="font-size:0.9rem;">
+            Already have an account? <a href="{% url 'shop:login' %}">Sign in</a>
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

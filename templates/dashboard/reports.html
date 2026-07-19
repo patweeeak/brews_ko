@@ -1,0 +1,162 @@
+{% extends 'dashboard/base_dashboard.html' %}
+{% load shop_extras %}
+
+{% block title %}Reports{% endblock %}
+{% block page_title %}Reports{% endblock %}
+{% block page_subtitle %}Sales performance and trends at a glance.{% endblock %}
+
+{% block content %}
+
+<div class="revenue-card gold mb-3" style="max-width:280px;">
+  <i class="bi bi-piggy-bank"></i>
+  <span class="label">Total Revenue (All Time)</span>
+  <strong>{{ total_revenue|peso }}</strong>
+</div>
+
+<div class="row g-3">
+  <div class="col-12 col-lg-6">
+    <div class="dash-panel">
+      <div class="dash-panel-title">
+        <h3><i class="bi bi-graph-up"></i> Revenue</h3>
+        <select id="revenuePeriod" class="dash-period-select" data-target="revenue">
+          <option value="daily">Daily</option>
+          <option value="weekly">Weekly</option>
+          <option value="monthly" selected>Monthly</option>
+          <option value="annual">Annual</option>
+        </select>
+      </div>
+      <div class="chart-box"><canvas id="revenueChart"></canvas></div>
+    </div>
+  </div>
+
+  <div class="col-12 col-lg-6">
+    <div class="dash-panel">
+      <div class="dash-panel-title">
+        <h3><i class="bi bi-pie-chart"></i> Revenue by Category</h3>
+        <select id="categoryPeriod" class="dash-period-select" data-target="category">
+          <option value="daily">Daily</option>
+          <option value="weekly">Weekly</option>
+          <option value="monthly" selected>Monthly</option>
+          <option value="annual">Annual</option>
+        </select>
+      </div>
+      <div class="dash-table-wrap">
+        <table class="dash-table">
+          <thead><tr><th>Category</th><th>Qty Sold</th><th>Revenue</th></tr></thead>
+          <tbody id="categoryTableBody">
+            {% for row in revenue_by_category %}
+            <tr><td>{{ row.cat|default:"Uncategorized" }}</td><td>{{ row.qty }}</td><td>{{ row.revenue|peso }}</td></tr>
+            {% empty %}
+            <tr><td colspan="3"><div class="dash-empty"><i class="bi bi-pie-chart"></i>No sales data for this period.</div></td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="dash-section-heading">
+  <h2><i class="bi bi-trophy"></i> Top Selling Products</h2>
+  <select id="productsPeriod" class="dash-period-select" data-target="products">
+    <option value="daily">Daily</option>
+    <option value="weekly">Weekly</option>
+    <option value="monthly" selected>Monthly</option>
+    <option value="annual">Annual</option>
+  </select>
+</div>
+<div class="dash-panel">
+  <div class="dash-table-wrap">
+    <table class="dash-table">
+      <thead><tr><th>#</th><th>Product</th><th>Qty Sold</th><th>Revenue</th></tr></thead>
+      <tbody id="productsTableBody">
+        {% for p in best_sellers %}
+        <tr><td>{{ forloop.counter }}</td><td>{{ p.product_name }}</td><td>{{ p.qty_sold }}</td><td>{{ p.revenue|peso }}</td></tr>
+        {% empty %}
+        <tr><td colspan="4"><div class="dash-empty"><i class="bi bi-graph-down"></i>No sales data for this period.</div></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  const chartColors = window.BREWSKO_CHART_COLORS || {};
+  const DASH_URLS = {
+    revenue: "{% url 'dashboard:reports_revenue_data' %}",
+    category: "{% url 'dashboard:reports_category_data' %}",
+    products: "{% url 'dashboard:reports_products_data' %}",
+  };
+
+  function toPeso(n) {
+    return '₱' + Number(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  // ---------- Revenue trend chart ----------
+  const revenueChart = new Chart(document.getElementById('revenueChart'), {
+    type: 'bar',
+    data: {
+      labels: {{ revenue_labels|safe }},
+      datasets: [{
+        label: 'Revenue (₱)',
+        data: {{ revenue_data|safe }},
+        backgroundColor: chartColors.coffee,
+        borderRadius: 6,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: { y: { beginAtZero: true } }
+    }
+  });
+
+  function refreshRevenue(period) {
+    fetch(`${DASH_URLS.revenue}?period=${period}`)
+      .then(r => r.json())
+      .then(data => {
+        revenueChart.data.labels = data.labels;
+        revenueChart.data.datasets[0].data = data.data;
+        revenueChart.update();
+      });
+  }
+
+  function refreshCategory(period) {
+    fetch(`${DASH_URLS.category}?period=${period}`)
+      .then(r => r.json())
+      .then(data => {
+        const body = document.getElementById('categoryTableBody');
+        if (!data.rows.length) {
+          body.innerHTML = '<tr><td colspan="3"><div class="dash-empty"><i class="bi bi-pie-chart"></i>No sales data for this period.</div></td></tr>';
+          return;
+        }
+        body.innerHTML = data.rows.map(r => `
+          <tr><td>${r.category}</td><td>${r.qty}</td><td>${toPeso(r.revenue)}</td></tr>
+        `).join('');
+      });
+  }
+
+  function refreshProducts(period) {
+    fetch(`${DASH_URLS.products}?period=${period}`)
+      .then(r => r.json())
+      .then(data => {
+        const body = document.getElementById('productsTableBody');
+        if (!data.rows.length) {
+          body.innerHTML = '<tr><td colspan="4"><div class="dash-empty"><i class="bi bi-graph-down"></i>No sales data for this period.</div></td></tr>';
+          return;
+        }
+        body.innerHTML = data.rows.map((r, i) => `
+          <tr><td>${i + 1}</td><td>${r.product_name}</td><td>${r.qty_sold}</td><td>${toPeso(r.revenue)}</td></tr>
+        `).join('');
+      });
+  }
+
+  document.getElementById('revenuePeriod').addEventListener('change', (e) => refreshRevenue(e.target.value));
+  document.getElementById('categoryPeriod').addEventListener('change', (e) => refreshCategory(e.target.value));
+  document.getElementById('productsPeriod').addEventListener('change', (e) => refreshProducts(e.target.value));
+</script>
+{% endblock %}

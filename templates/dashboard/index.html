@@ -1,0 +1,230 @@
+{% extends 'dashboard/base_dashboard.html' %}
+{% load shop_extras %}
+
+{% block title %}Dashboard{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+{% block page_subtitle %}Welcome back, {{ request.user.first_name|default:request.user.username }} — here's what's brewing today.{% endblock %}
+
+{% block content %}
+
+<!-- ============ STAT CARDS ============ -->
+<div class="stat-grid">
+  <div class="stat-card"><div class="stat-card-icon bg-brown"><i class="bi bi-receipt"></i></div>
+    <div class="stat-card-body"><strong>{{ stats.total_orders }}</strong><span>Total Orders</span><small>All orders ever placed</small></div></div>
+
+  <div class="stat-card"><div class="stat-card-icon bg-amber"><i class="bi bi-hourglass-split"></i></div>
+    <div class="stat-card-body"><strong>{{ stats.pending_orders }}</strong><span>Pending Orders</span><small>Awaiting confirmation</small></div></div>
+
+  <div class="stat-card"><div class="stat-card-icon bg-blue"><i class="bi bi-fire"></i></div>
+    <div class="stat-card-body"><strong>{{ stats.preparing_orders }}</strong><span>Preparing Orders</span><small>Currently being made</small></div></div>
+
+  <div class="stat-card"><div class="stat-card-icon bg-teal"><i class="bi bi-bag-check"></i></div>
+    <div class="stat-card-body"><strong>{{ stats.ready_orders }}</strong><span>Ready Orders</span><small>Ready for pickup</small></div></div>
+
+  <div class="stat-card"><div class="stat-card-icon bg-green"><i class="bi bi-check2-circle"></i></div>
+    <div class="stat-card-body"><strong>{{ stats.completed_orders }}</strong><span>Completed Orders</span><small>Successfully fulfilled</small></div></div>
+
+  <div class="stat-card"><div class="stat-card-icon bg-red"><i class="bi bi-x-circle"></i></div>
+    <div class="stat-card-body"><strong>{{ stats.cancelled_orders }}</strong><span>Cancelled Orders</span><small>Did not complete</small></div></div>
+
+  <div class="stat-card"><div class="stat-card-icon bg-purple"><i class="bi bi-cup-straw"></i></div>
+    <div class="stat-card-body"><strong>{{ stats.total_products }}</strong><span>Total Products</span><small>Across the whole menu</small></div></div>
+
+  <div class="stat-card"><div class="stat-card-icon bg-pink"><i class="bi bi-tags"></i></div>
+    <div class="stat-card-body"><strong>{{ stats.total_categories }}</strong><span>Total Categories</span><small>Menu groupings</small></div></div>
+
+  <div class="stat-card"><div class="stat-card-icon bg-gold"><i class="bi bi-star-fill"></i></div>
+    <div class="stat-card-body"><strong>{{ stats.featured_products }}</strong><span>Featured Products</span><small>Highlighted on homepage</small></div></div>
+
+  <div class="stat-card"><div class="stat-card-icon bg-gray"><i class="bi bi-calendar-day"></i></div>
+    <div class="stat-card-body"><strong>{{ stats.todays_orders }}</strong><span>Today's Orders</span><small>Placed since midnight</small></div></div>
+</div>
+
+<!-- ============ REVENUE ============ -->
+<div class="dash-section-heading">
+  <h2><i class="bi bi-cash-coin"></i> Revenue</h2>
+</div>
+<div class="revenue-grid">
+  <div class="revenue-card"><i class="bi bi-sun"></i><span class="label">Today's Revenue</span><strong>{{ revenue.today|peso }}</strong></div>
+  <div class="revenue-card alt"><i class="bi bi-calendar-week"></i><span class="label">Weekly Revenue</span><strong>{{ revenue.weekly|peso }}</strong></div>
+  <div class="revenue-card dark"><i class="bi bi-calendar3"></i><span class="label">Monthly Revenue</span><strong>{{ revenue.monthly|peso }}</strong></div>
+  <div class="revenue-card gold"><i class="bi bi-piggy-bank"></i><span class="label">Total Revenue</span><strong>{{ revenue.total|peso }}</strong></div>
+</div>
+
+<!-- ============ CHARTS ============ -->
+<div class="dash-section-heading">
+  <h2><i class="bi bi-bar-chart-line"></i> Order Status Analytics</h2>
+</div>
+<div class="row g-3">
+  <div class="col-12 col-lg-5">
+    <div class="dash-panel">
+      <div class="dash-panel-title"><h3>Orders by Status</h3></div>
+      <div class="chart-box"><canvas id="statusChart"></canvas></div>
+    </div>
+  </div>
+  <div class="col-12 col-lg-7">
+    <div class="dash-panel">
+      <div class="dash-panel-title"><h3>Revenue — Last 7 Days</h3></div>
+      <div class="chart-box"><canvas id="trendChart"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ RECENT ORDERS ============ -->
+<div class="dash-section-heading">
+  <h2><i class="bi bi-receipt-cutoff"></i> Recent Orders</h2>
+  <a href="{% url 'dashboard:orders' %}" class="btn-quick">View All Orders <i class="bi bi-arrow-right"></i></a>
+</div>
+<div class="dash-panel">
+  <div class="dash-table-wrap">
+    <table class="dash-table">
+      <thead>
+        <tr>
+          <th>Order ID</th><th>Customer</th><th>Contact</th><th>Total</th><th>Status</th><th>Date</th><th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for order in recent_orders %}
+        <tr>
+          <td>#{{ order.id }}</td>
+          <td>{{ order.customer_name }}</td>
+          <td>{{ order.contact_number }}</td>
+          <td>{{ order.total_amount|peso }}</td>
+          <td><span class="status-pill status-{{ order.status }}">{{ order.get_status_display }}</span></td>
+          <td>{{ order.created_at|date:"M d, Y g:i A" }}</td>
+          <td>
+            <a href="{% url 'dashboard:order_detail' order.id %}" class="dash-icon-btn" title="View"><i class="bi bi-eye"></i></a>
+            <a href="{% url 'dashboard:order_detail' order.id %}" class="dash-icon-btn edit" title="Update Status"><i class="bi bi-pencil"></i></a>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="7"><div class="dash-empty"><i class="bi bi-inbox"></i>No orders yet.</div></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ============ PRODUCTS & CATEGORIES OVERVIEW ============ -->
+<div class="row g-3 mt-1">
+  <div class="col-12 col-lg-8">
+    <div class="dash-panel h-100">
+      <div class="dash-panel-title"><h3><i class="bi bi-cup-straw"></i> Product Management</h3></div>
+      <div class="stat-grid" style="grid-template-columns:repeat(auto-fit,minmax(140px,1fr));">
+        <div class="stat-card"><div class="stat-card-icon bg-brown"><i class="bi bi-collection"></i></div><div class="stat-card-body"><strong>{{ product_overview.total }}</strong><span>Total</span></div></div>
+        <div class="stat-card"><div class="stat-card-icon bg-green"><i class="bi bi-check-circle"></i></div><div class="stat-card-body"><strong>{{ product_overview.available }}</strong><span>Available</span></div></div>
+        <div class="stat-card"><div class="stat-card-icon bg-red"><i class="bi bi-slash-circle"></i></div><div class="stat-card-body"><strong>{{ product_overview.unavailable }}</strong><span>Unavailable</span></div></div>
+        <div class="stat-card"><div class="stat-card-icon bg-gold"><i class="bi bi-star-fill"></i></div><div class="stat-card-body"><strong>{{ product_overview.featured }}</strong><span>Featured</span></div></div>
+      </div>
+      <div class="quick-actions mt-3">
+        <a href="{% url 'dashboard:product_add' %}" class="btn-quick solid"><i class="bi bi-plus-lg"></i> Add Product</a>
+        <a href="{% url 'dashboard:products' %}" class="btn-quick"><i class="bi bi-gear"></i> Manage Products</a>
+      </div>
+    </div>
+  </div>
+  <div class="col-12 col-lg-4">
+    <div class="dash-panel h-100">
+      <div class="dash-panel-title"><h3><i class="bi bi-tags"></i> Categories</h3></div>
+      <div class="stat-card">
+        <div class="stat-card-icon bg-pink"><i class="bi bi-tags-fill"></i></div>
+        <div class="stat-card-body"><strong>{{ category_overview.total }}</strong><span>Total Categories</span></div>
+      </div>
+      <div class="quick-actions mt-3">
+        <a href="{% url 'dashboard:category_add' %}" class="btn-quick solid"><i class="bi bi-plus-lg"></i> Add Category</a>
+        <a href="{% url 'dashboard:categories' %}" class="btn-quick"><i class="bi bi-gear"></i> Manage Categories</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ BEST SELLERS + ACTIVITY ============ -->
+<div class="row g-3 mt-1">
+  <div class="col-12 col-lg-7">
+    <div class="dash-panel h-100">
+      <div class="dash-panel-title"><h3><i class="bi bi-trophy"></i> Best Selling Products</h3></div>
+      <div class="dash-table-wrap">
+        <table class="dash-table">
+          <thead><tr><th>Product</th><th>Qty Sold</th><th>Revenue</th></tr></thead>
+          <tbody>
+            {% for p in best_sellers %}
+            <tr>
+              <td>{{ p.product_name }}</td>
+              <td>{{ p.qty_sold }}</td>
+              <td>{{ p.revenue|peso }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="3"><div class="dash-empty"><i class="bi bi-graph-down"></i>No sales data yet.</div></td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <div class="col-12 col-lg-5">
+    <div class="dash-panel h-100">
+      <div class="dash-panel-title"><h3><i class="bi bi-clock-history"></i> Recent Activity</h3></div>
+      <ul class="activity-list">
+        {% for activity in recent_activity %}
+        <li class="activity-item">
+          <div class="activity-icon"><i class="bi {{ activity.icon }}"></i></div>
+          <div class="activity-body">
+            <p>{{ activity.description }}</p>
+            <time>{{ activity.created_at|timesince }} ago</time>
+          </div>
+        </li>
+        {% empty %}
+        <li class="dash-empty"><i class="bi bi-clock-history"></i>No activity recorded yet.</li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  const chartColors = window.BREWSKO_CHART_COLORS || {};
+
+  new Chart(document.getElementById('statusChart'), {
+    type: 'doughnut',
+    data: {
+      labels: {{ status_chart_labels|safe }},
+      datasets: [{
+        data: {{ status_chart_data|safe }},
+        backgroundColor: [chartColors.amber, chartColors.blue, chartColors.coffee, chartColors.green, chartColors.red],
+        borderWidth: 2,
+        borderColor: '#fff',
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { family: 'Manrope' } } } }
+    }
+  });
+
+  new Chart(document.getElementById('trendChart'), {
+    type: 'line',
+    data: {
+      labels: {{ trend_labels|safe }},
+      datasets: [{
+        label: 'Revenue (₱)',
+        data: {{ trend_data|safe }},
+        borderColor: chartColors.coffee,
+        backgroundColor: 'rgba(111, 78, 55, 0.12)',
+        tension: 0.35,
+        fill: true,
+        pointBackgroundColor: chartColors.accent,
+        pointRadius: 4,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: { y: { beginAtZero: true } }
+    }
+  });
+</script>
+{% endblock %}

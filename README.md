@@ -9,7 +9,7 @@ Brew's Ko is a modern Django-based coffee shop web application with a polished s
 - Customer accounts with profile management, favorites, and product/store reviews
 - Staff dashboard at /dashboard/ for orders, products, categories, customers, reports, homepage content, gamification, and shop settings
 - Custom branded admin login experience
-- Seed data command to populate sample menu items and testimonials
+- Seed data command to populate sample menu items
 
 ## Tech Stack
 

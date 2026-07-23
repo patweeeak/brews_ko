@@ -12,6 +12,7 @@ from datetime import timedelta
 from django.contrib import messages
 from django.contrib.auth import views as auth_views
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
+from django.contrib.auth.models import User
 from django.db.models import Sum, Count, Q, F, DecimalField
 from django.db.models.functions import Coalesce
 from django.http import JsonResponse
@@ -23,17 +24,24 @@ from django.views.generic import TemplateView, ListView, DetailView, CreateView,
 from .models import (
     Category, Product, Order, OrderItem, ActivityLog, ShopSettings,
     HomePageContent, GamificationSettings, CustomerProfile, Review,
+    CashierProfile, Payment,
 )
 from .dashboard_forms import (
     ProductForm, CategoryForm, OrderStatusForm, ShopSettingsForm,
-    HomePageContentForm, GamificationSettingsForm,
+    HomePageContentForm, GamificationSettingsForm, CashierCreationForm, PaymentForm,
 )
 
 
 class StaffRequiredMixin(LoginRequiredMixin, UserPassesTestMixin):
-    """Only staff/superuser accounts may access the dashboard."""
+    """
+    Only staff/superuser accounts may access the dashboard. Additionally,
+    cashier accounts (CashierProfile) are restricted to views that opt in
+    via cashier_allowed=True — everything else redirects them to their
+    Orders & Payments page, checked BEFORE any view logic runs.
+    """
     login_url = '/admin/login/'
     redirect_field_name = 'next'
+    cashier_allowed = False
 
     def test_func(self):
         return self.request.user.is_authenticated and self.request.user.is_staff
@@ -43,6 +51,12 @@ class StaffRequiredMixin(LoginRequiredMixin, UserPassesTestMixin):
             messages.error(self.request, "You don't have permission to access the admin dashboard.")
             return redirect('shop:home')
         return super().handle_no_permission()
+
+    def dispatch(self, request, *args, **kwargs):
+        if (request.user.is_authenticated and request.user.is_staff
+                and hasattr(request.user, 'cashier_profile') and not self.cashier_allowed):
+            return redirect('dashboard:cashier')
+        return super().dispatch(request, *args, **kwargs)
 
 
 ZERO_DECIMAL = DecimalField(max_digits=10, decimal_places=2)
@@ -608,3 +622,97 @@ class GamificationView(StaffRequiredMixin, TemplateView):
 
         messages.error(request, "Unrecognized form submission.")
         return redirect('dashboard:gamification')
+
+
+# ---------------------------------------------------------------------------
+# Cashier — the ONLY thing a cashier account can see on the dashboard.
+# Lists active (non-cancelled) orders and lets the cashier record a
+# payment (Cash or GCash), which creates the e-receipt.
+# ---------------------------------------------------------------------------
+
+class CashierOrdersView(StaffRequiredMixin, TemplateView):
+    template_name = 'dashboard/cashier.html'
+    cashier_allowed = True
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx['orders'] = (
+            Order.objects.exclude(status=Order.STATUS_CANCELLED)
+            .select_related('payment').order_by('-created_at')[:50]
+        )
+        ctx['payment_form'] = PaymentForm()
+        return ctx
+
+
+class RecordPaymentView(StaffRequiredMixin, View):
+    """POST-only: cashier records a payment for an order, creating its e-receipt."""
+    cashier_allowed = True
+
+    def post(self, request, order_id):
+        order = get_object_or_404(Order, id=order_id)
+        if order.is_paid:
+            messages.warning(request, f"Order #{order.id} has already been paid.")
+            return redirect('dashboard:cashier')
+
+        form = PaymentForm(request.POST)
+        if form.is_valid():
+            payment = form.save(commit=False)
+            payment.order = order
+            payment.amount = order.total_amount
+            payment.cashier = request.user
+            payment.save()
+            messages.success(request, f"Payment recorded — receipt {payment.receipt_number} created.")
+        else:
+            messages.error(request, "Couldn't record that payment: " + " ".join(
+                f"{f}: {', '.join(e)}" for f, e in form.errors.items()
+            ))
+        return redirect('dashboard:cashier')
+
+
+class CashierManagementView(StaffRequiredMixin, TemplateView):
+    """Admin-only: assign usernames/passwords to cashier accounts."""
+    template_name = 'dashboard/cashiers.html'
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx.setdefault('form', CashierCreationForm())
+        ctx['cashiers'] = CashierProfile.objects.select_related('user').order_by('-created_at')
+        return ctx
+
+    def post(self, request, *args, **kwargs):
+        form = CashierCreationForm(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f"Cashier account '{form.cleaned_data['username']}' created.")
+            return redirect('dashboard:cashiers')
+        return self.render_to_response(self.get_context_data(form=form))
+
+
+class CashierDeleteView(StaffRequiredMixin, View):
+    """POST-only: remove a cashier account entirely."""
+
+    def post(self, request, pk):
+        cashier = get_object_or_404(CashierProfile, pk=pk)
+        cashier.user.delete()  # cascades to the CashierProfile
+        messages.success(request, "Cashier account removed.")
+        return redirect('dashboard:cashiers')
+
+
+# ---------------------------------------------------------------------------
+# Receipts — admin's full copy of every e-receipt ever issued.
+# ---------------------------------------------------------------------------
+
+class ReceiptListView(StaffRequiredMixin, ListView):
+    model = Payment
+    template_name = 'dashboard/receipts.html'
+    context_object_name = 'payments'
+    paginate_by = 25
+
+    def get_queryset(self):
+        return Payment.objects.select_related('order', 'cashier').order_by('-paid_at')
+
+
+class ReceiptDetailView(StaffRequiredMixin, DetailView):
+    model = Payment
+    template_name = 'dashboard/receipt_detail.html'
+    context_object_name = 'payment'

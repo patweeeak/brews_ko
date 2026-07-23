@@ -1,5 +1,6 @@
 from django import forms
-from .models import Product, Category, Order, ShopSettings, HomePageContent, GamificationSettings
+from django.contrib.auth.models import User
+from .models import Product, Category, Order, ShopSettings, HomePageContent, GamificationSettings, CashierProfile, Payment
 
 
 class ProductForm(forms.ModelForm):
@@ -36,6 +37,8 @@ class ProductForm(forms.ModelForm):
         self.fields['slug'].required = False
         self.fields['description'].required = False
         self.fields['price_large'].required = False
+        self.fields['ingredients'].required = False
+        self.fields['image'].required = False
 
     def clean(self):
         cleaned = super().clean()
@@ -43,8 +46,6 @@ class ProductForm(forms.ModelForm):
         if category and category.is_drink and not cleaned.get('price_large'):
             self.add_error('price_large', "Large price is required for drink-category products — both sizes must be available.")
         return cleaned
-        self.fields['ingredients'].required = False
-        self.fields['image'].required = False
 
 
 class CategoryForm(forms.ModelForm):
@@ -94,7 +95,7 @@ class HomePageContentForm(forms.ModelForm):
     class Meta:
         model = HomePageContent
         fields = [
-            'hero_eyebrow', 'hero_title', 'hero_subtitle', 'hero_image',
+            'hero_eyebrow', 'hero_title', 'hero_subtitle', 'hero_image', 'years_roasting',
             'about_eyebrow', 'about_title', 'about_text_1', 'about_text_2', 'about_image',
             'feature_1_icon', 'feature_1_title', 'feature_1_text',
             'feature_2_icon', 'feature_2_title', 'feature_2_text',
@@ -104,6 +105,7 @@ class HomePageContentForm(forms.ModelForm):
             'hero_title': forms.TextInput(attrs={'class': 'form-control'}),
             'hero_subtitle': forms.TextInput(attrs={'class': 'form-control'}),
             'hero_image': forms.ClearableFileInput(attrs={'class': 'form-control'}),
+            'years_roasting': forms.NumberInput(attrs={'class': 'form-control', 'min': '0'}),
             'about_eyebrow': forms.TextInput(attrs={'class': 'form-control'}),
             'about_title': forms.TextInput(attrs={'class': 'form-control'}),
             'about_text_1': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
@@ -132,3 +134,42 @@ class GamificationSettingsForm(forms.ModelForm):
             'enabled': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'program_name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': "e.g. Brew's Ko Rewards"}),
         }
+
+
+class CashierCreationForm(forms.Form):
+    """Admin uses this to assign a username/password to a new cashier account."""
+    full_name = forms.CharField(max_length=150, widget=forms.TextInput(attrs={'class': 'form-control'}))
+    username = forms.CharField(max_length=150, widget=forms.TextInput(attrs={'class': 'form-control'}))
+    password = forms.CharField(widget=forms.PasswordInput(attrs={'class': 'form-control'}))
+
+    def clean_username(self):
+        username = self.cleaned_data['username']
+        if User.objects.filter(username=username).exists():
+            raise forms.ValidationError("That username is already taken.")
+        return username
+
+    def save(self):
+        user = User.objects.create_user(
+            username=self.cleaned_data['username'],
+            password=self.cleaned_data['password'],
+            is_staff=True,
+        )
+        return CashierProfile.objects.create(user=user, full_name=self.cleaned_data['full_name'])
+
+
+class PaymentForm(forms.ModelForm):
+    """Used by the cashier to record a payment against an order (creates the e-receipt)."""
+    class Meta:
+        model = Payment
+        fields = ['method', 'amount', 'reference_number']
+        widgets = {
+            'method': forms.RadioSelect(),
+            'amount': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+            'reference_number': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'GCash reference number'}),
+        }
+
+    def clean(self):
+        cleaned = super().clean()
+        if cleaned.get('method') == Payment.METHOD_GCASH and not cleaned.get('reference_number'):
+            self.add_error('reference_number', "A GCash reference number is required for GCash payments.")
+        return cleaned

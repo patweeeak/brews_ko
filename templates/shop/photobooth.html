@@ -1,0 +1,250 @@
+{% extends 'base.html' %}
+
+{% block title %}Photobooth — {{ shop_name }}{% endblock %}
+
+{% block content %}
+<section class="checkout-section">
+  <div class="container">
+    <div class="text-center mb-4">
+      <p class="section-eyebrow reveal-fade">Just for Fun</p>
+      <h1 class="section-title reveal-fade">Brew's Ko Photobooth</h1>
+      <p class="section-subtitle reveal-fade">Strike a pose — up to 3 photos become one keepsake strip.</p>
+      <a href="{% url 'shop:photobooth_gallery' %}" class="back-to-menu-link"><i class="bi bi-images"></i> View My Strips</a>
+    </div>
+
+    <div id="pb-permission-request" class="text-center reveal-fade">
+      <button type="button" id="pb-start-btn" class="btn btn-brand btn-lg">
+        <i class="bi bi-camera-fill"></i> Turn On Camera
+      </button>
+      <p class="text-muted mt-2" style="font-size:0.85rem;">Your browser will ask permission to use your camera.</p>
+    </div>
+
+    <div id="pb-camera-error" class="photobooth-camera-error reveal-fade" style="display:none;">
+      <i class="bi bi-camera-video-off"></i>
+      <p>We couldn't access your camera. Please allow camera permission in your browser and try again.</p>
+      <button type="button" id="pb-retry-btn" class="btn btn-brand-outline">Try Again</button>
+    </div>
+
+    <div id="pb-capture-ui" style="display:none;">
+      <div class="photobooth-stage reveal-fade">
+        <video id="pb-video" class="photobooth-video" autoplay playsinline></video>
+        <div id="pb-flash" class="photobooth-flash"></div>
+      </div>
+
+      <div class="photobooth-slots">
+        <div class="photobooth-slot" data-slot="0"><i class="bi bi-1-circle"></i></div>
+        <div class="photobooth-slot" data-slot="1"><i class="bi bi-2-circle"></i></div>
+        <div class="photobooth-slot" data-slot="2"><i class="bi bi-3-circle"></i></div>
+      </div>
+
+      <div class="text-center">
+        <button type="button" id="pb-capture-btn" class="photobooth-shutter-btn"><i class="bi bi-camera-fill"></i></button>
+        <p class="text-muted mt-2" id="pb-capture-hint" style="font-size:0.85rem;">Photo 1 of 3</p>
+      </div>
+    </div>
+
+    <div id="pb-review-ui" class="text-center" style="display:none;">
+      <canvas id="pb-final-canvas" class="photobooth-final-canvas reveal-fade" style="max-width:280px;margin:0 auto;border-radius:8px;box-shadow:var(--shadow-md);"></canvas>
+      <div class="mt-3 d-flex justify-content-center gap-2 flex-wrap">
+        <button type="button" id="pb-retake-btn" class="btn btn-brand-outline"><i class="bi bi-arrow-counterclockwise"></i> Retake</button>
+        <button type="button" id="pb-save-btn" class="btn btn-brand"><i class="bi bi-check2-circle"></i> Save This Strip</button>
+      </div>
+      <p id="pb-save-status" class="text-muted mt-2" style="font-size:0.85rem;"></p>
+    </div>
+  </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+  const startBtn = document.getElementById('pb-start-btn');
+  const retryBtn = document.getElementById('pb-retry-btn');
+  const permissionBox = document.getElementById('pb-permission-request');
+  const errorBox = document.getElementById('pb-camera-error');
+  const captureUI = document.getElementById('pb-capture-ui');
+  const reviewUI = document.getElementById('pb-review-ui');
+  const video = document.getElementById('pb-video');
+  const flash = document.getElementById('pb-flash');
+  const captureBtn = document.getElementById('pb-capture-btn');
+  const captureHint = document.getElementById('pb-capture-hint');
+  const slots = document.querySelectorAll('.photobooth-slot');
+  const finalCanvas = document.getElementById('pb-final-canvas');
+  const retakeBtn = document.getElementById('pb-retake-btn');
+  const saveBtn = document.getElementById('pb-save-btn');
+  const saveStatus = document.getElementById('pb-save-status');
+
+  const MAX_PHOTOS = 3;
+  const SLOT_SIZE = 520;      // px, square crop per photo (at strip export resolution)
+  const STRIP_W = 600;        // 2in @ 300dpi
+  const STRIP_H = 1800;       // 6in @ 300dpi
+  const SIDE_MARGIN = 40;
+  const TOP_AREA = 140;
+  const GAP = 20;
+
+  let stream = null;
+  let photos = [];  // array of HTMLImageElement, square-cropped
+
+  async function startCamera() {
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
+      video.srcObject = stream;
+      permissionBox.style.display = 'none';
+      errorBox.style.display = 'none';
+      captureUI.style.display = 'block';
+      reviewUI.style.display = 'none';
+    } catch (err) {
+      permissionBox.style.display = 'none';
+      errorBox.style.display = 'block';
+    }
+  }
+
+  function stopCamera() {
+    if (stream) {
+      stream.getTracks().forEach(t => t.stop());
+      stream = null;
+    }
+  }
+
+  function capturePhoto() {
+    // Center-crop the current video frame into a square, mirrored to match the on-screen preview.
+    const vw = video.videoWidth, vh = video.videoHeight;
+    const side = Math.min(vw, vh);
+    const sx = (vw - side) / 2, sy = (vh - side) / 2;
+
+    const cropCanvas = document.createElement('canvas');
+    cropCanvas.width = SLOT_SIZE;
+    cropCanvas.height = SLOT_SIZE;
+    const ctx = cropCanvas.getContext('2d');
+    ctx.translate(SLOT_SIZE, 0);
+    ctx.scale(-1, 1); // mirror, matches the preview
+    ctx.drawImage(video, sx, sy, side, side, 0, 0, SLOT_SIZE, SLOT_SIZE);
+
+    const img = new Image();
+    img.src = cropCanvas.toDataURL('image/png');
+    photos.push(img);
+
+    // flash effect
+    flash.classList.remove('flash-active');
+    void flash.offsetWidth;
+    flash.classList.add('flash-active');
+
+    const slot = slots[photos.length - 1];
+    slot.classList.add('filled');
+    slot.innerHTML = '';
+    const thumb = document.createElement('img');
+    thumb.src = cropCanvas.toDataURL('image/png');
+    slot.appendChild(thumb);
+
+    if (photos.length >= MAX_PHOTOS) {
+      captureBtn.disabled = true;
+      captureHint.textContent = 'Building your strip…';
+      setTimeout(buildFinalStrip, 400);
+    } else {
+      captureHint.textContent = `Photo ${photos.length + 1} of ${MAX_PHOTOS}`;
+    }
+  }
+
+  function buildFinalStrip() {
+    stopCamera();
+    captureUI.style.display = 'none';
+
+    finalCanvas.width = STRIP_W;
+    finalCanvas.height = STRIP_H;
+    const ctx = finalCanvas.getContext('2d');
+
+    // Background — warm cream with a subtle coffee-brown border
+    const bgGradient = ctx.createLinearGradient(0, 0, 0, STRIP_H);
+    bgGradient.addColorStop(0, '#F5F0E6');
+    bgGradient.addColorStop(1, '#EDE3D3');
+    ctx.fillStyle = bgGradient;
+    ctx.fillRect(0, 0, STRIP_W, STRIP_H);
+    ctx.strokeStyle = '#6F4E37';
+    ctx.lineWidth = 14;
+    ctx.strokeRect(7, 7, STRIP_W - 14, STRIP_H - 14);
+
+    // Header branding
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#4A3323';
+    ctx.font = '700 54px Georgia, serif';
+    ctx.fillText("Brew's Ko", STRIP_W / 2, 78);
+    ctx.font = '600 22px Arial, sans-serif';
+    ctx.fillStyle = '#8C6B52';
+    ctx.fillText('☕  P H O T O B O O T H  ☕', STRIP_W / 2, 112);
+
+    // Photos
+    photos.forEach((img, i) => {
+      const y = TOP_AREA + i * (SLOT_SIZE + GAP);
+      ctx.save();
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillRect(SIDE_MARGIN - 8, y - 8, SLOT_SIZE + 16, SLOT_SIZE + 16);
+      ctx.drawImage(img, SIDE_MARGIN, y, SLOT_SIZE, SLOT_SIZE);
+      ctx.restore();
+    });
+
+    // Footer
+    const dateStr = new Date().toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+    ctx.font = '600 20px Arial, sans-serif';
+    ctx.fillStyle = '#6F4E37';
+    ctx.fillText(dateStr + '  •  brewsko.ph', STRIP_W / 2, STRIP_H - 30);
+
+    reviewUI.style.display = 'block';
+    saveStatus.textContent = '';
+  }
+
+  function resetBooth() {
+    photos = [];
+    slots.forEach(s => {
+      s.classList.remove('filled');
+      const i = s.dataset.slot;
+      s.innerHTML = `<i class="bi bi-${parseInt(i) + 1}-circle"></i>`;
+    });
+    captureBtn.disabled = false;
+    captureHint.textContent = 'Photo 1 of 3';
+    reviewUI.style.display = 'none';
+    startCamera();
+  }
+
+  function saveStrip() {
+    saveBtn.disabled = true;
+    saveStatus.textContent = 'Saving…';
+    const dataUrl = finalCanvas.toDataURL('image/png');
+
+    const formData = new FormData();
+    formData.append('image_data', dataUrl);
+
+    fetch("{% url 'shop:photobooth_save' %}", {
+      method: 'POST',
+      headers: { 'X-CSRFToken': getCookie('csrftoken') },
+      body: formData,
+    })
+      .then(r => r.json())
+      .then(data => {
+        if (data.success) {
+          saveStatus.textContent = 'Saved! Redirecting…';
+          window.location.href = data.redirect_url;
+        } else {
+          saveStatus.textContent = data.error || 'Something went wrong.';
+          saveBtn.disabled = false;
+        }
+      })
+      .catch(() => {
+        saveStatus.textContent = 'Network error — please try again.';
+        saveBtn.disabled = false;
+      });
+  }
+
+  function getCookie(name) {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop().split(';').shift();
+  }
+
+  startBtn.addEventListener('click', startCamera);
+  retryBtn.addEventListener('click', startCamera);
+  captureBtn.addEventListener('click', capturePhoto);
+  retakeBtn.addEventListener('click', resetBooth);
+  saveBtn.addEventListener('click', saveStrip);
+})();
+</script>
+{% endblock %}

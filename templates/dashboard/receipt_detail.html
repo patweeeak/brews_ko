@@ -1,0 +1,41 @@
+{% extends 'dashboard/base_dashboard.html' %}
+{% load shop_extras %}
+
+{% block title %}Receipt {{ payment.receipt_number }}{% endblock %}
+{% block page_title %}Receipt {{ payment.receipt_number }}{% endblock %}
+{% block page_subtitle %}Order #{{ payment.order.id }} — {{ payment.paid_at|date:"M d, Y g:i A" }}{% endblock %}
+
+{% block content %}
+
+<a href="{% url 'dashboard:receipts' %}" class="btn-quick mb-3"><i class="bi bi-arrow-left"></i> Back to Receipts</a>
+
+<div class="dash-panel receipt-card">
+  <h3>Brew's Ko</h3>
+  <p class="receipt-sub">Official E-Receipt</p>
+  <hr>
+  <p class="receipt-meta mb-1">Receipt #: {{ payment.receipt_number }}</p>
+  <p class="receipt-meta mb-1">Order #: {{ payment.order.id }}</p>
+  <p class="receipt-meta mb-1">Date: {{ payment.paid_at|date:"M d, Y g:i A" }}</p>
+  <p class="receipt-meta mb-1">Customer: {{ payment.order.customer_name }}</p>
+  <p class="receipt-meta mb-1">Dining: {{ payment.order.get_dining_option_display }}</p>
+  <p class="receipt-meta mb-3">Cashier: {{ payment.cashier.username|default:"—" }}</p>
+  <hr>
+  <table>
+    {% for item in payment.order.items.all %}
+    <tr>
+      <td>{{ item.quantity }}x {{ item.product_name }}{% if item.size %} ({{ item.get_size_display }}){% endif %}</td>
+      <td class="text-end">{{ item.subtotal|peso }}</td>
+    </tr>
+    {% endfor %}
+    <tr class="receipt-total-row">
+      <td>TOTAL</td>
+      <td class="text-end">{{ payment.amount|peso }}</td>
+    </tr>
+  </table>
+  <hr>
+  <p class="receipt-meta mb-0">Payment Method: {{ payment.get_method_display }}</p>
+  {% if payment.reference_number %}<p class="receipt-meta mb-0">GCash Ref #: {{ payment.reference_number }}</p>{% endif %}
+  <p class="receipt-sub mt-3">Thank you for choosing Brew's Ko!</p>
+</div>
+
+{% endblock %}

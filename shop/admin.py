@@ -3,6 +3,7 @@ from django.utils.html import format_html
 from .models import (
     Category, Product, Testimonial, Order, OrderItem, ActivityLog, ShopSettings,
     CustomerProfile, HomePageContent, GamificationSettings, Review,
+    CashierProfile, Payment,
 )
 
 
@@ -169,6 +170,20 @@ class ReviewAdmin(admin.ModelAdmin):
     list_display = ('customer', 'product', 'rating', 'created_at')
     list_filter = ('rating',)
     search_fields = ('customer__full_name', 'comment')
+
+
+@admin.register(CashierProfile)
+class CashierProfileAdmin(admin.ModelAdmin):
+    list_display = ('full_name', 'user', 'created_at')
+    search_fields = ('full_name', 'user__username')
+
+
+@admin.register(Payment)
+class PaymentAdmin(admin.ModelAdmin):
+    list_display = ('receipt_number', 'order', 'method', 'amount', 'cashier', 'paid_at')
+    list_filter = ('method',)
+    search_fields = ('receipt_number', 'reference_number', 'order__customer_name')
+    readonly_fields = ('receipt_number', 'paid_at')
 
 
 admin.site.site_header = "Brew's Ko Administration"

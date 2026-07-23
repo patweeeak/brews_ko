@@ -16,9 +16,9 @@
           <a href="{% url 'shop:menu' %}" class="btn btn-brand-outline btn-lg">View Menu</a>
         </div>
         <div class="hero-stats reveal-fade">
-          <div><strong>10+</strong><span>Years Roasting</span></div>
-          <div><strong>4.9★</strong><span>Customer Rating</span></div>
-          <div><strong>50+</strong><span>Menu Items</span></div>
+          <div><strong>{{ homepage.years_roasting }}+</strong><span>Years Roasting</span></div>
+          <div><strong>{% if store_rating %}{{ store_rating }}★{% else %}New{% endif %}</strong><span>Customer Rating</span></div>
+          <div><strong>{{ menu_item_count }}</strong><span>Menu Items</span></div>
         </div>
       </div>
       <div class="col-12 col-lg-6 order-1 order-lg-2">

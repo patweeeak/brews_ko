@@ -4,51 +4,39 @@
 {% block title %}Order Confirmed — {{ shop_name }}{% endblock %}
 
 {% block content %}
-<section class="order-success-section">
+<section class="checkout-section">
   <div class="container">
-    <div class="order-success-card reveal-fade">
-      <div class="order-success-icon"><i class="bi bi-check-circle-fill"></i></div>
-      <h1>Thank you for your order!</h1>
-      <p class="order-success-sub">We've received it and we're getting your order ready with care.</p>
+    <div class="row justify-content-center">
+      <div class="col-12 col-lg-6">
+        <div class="checkout-form-card reveal-fade text-center">
+          <i class="bi bi-check-circle-fill" style="font-size:3rem;color:var(--success);"></i>
+          <h1 class="section-title mt-3 mb-2" style="font-size:1.6rem;">Order Confirmed!</h1>
+          <p class="text-muted mb-1">Order #{{ order.id }}</p>
+          <p class="mb-4">Thanks, {{ order.customer_name }} — we've received your order and we're getting started.</p>
 
-      <div class="order-success-details">
-        <div class="row text-start g-3">
-          <div class="col-6">
-            <span class="detail-label">Order Number</span>
-            <span class="detail-value">#{{ order.id }}</span>
-          </div>
-          <div class="col-6">
-            <span class="detail-label">Status</span>
-            <span class="detail-value status-pill status-{{ order.status }}">{{ order.get_status_display }}</span>
-          </div>
-          <div class="col-6">
-            <span class="detail-label">Name</span>
-            <span class="detail-value">{{ order.customer_name }}</span>
-          </div>
-          <div class="col-6">
-            <span class="detail-label">Contact</span>
-            <span class="detail-value">{{ order.contact_number }}</span>
-          </div>
-        </div>
-
-        <hr>
-
-        <div class="order-success-items text-start">
-          {% for item in order.items.all %}
-            <div class="cart-summary-row">
-              <span>{{ item.quantity }} × {{ item.product_name }}</span>
-              <span>{{ item.subtotal|peso }}</span>
+          <div class="cart-summary text-start mb-4">
+            {% for item in order.items.all %}
+              <div class="cart-summary-row">
+                <span>{{ item.quantity }} × {{ item.product_name }}{% if item.size %} ({{ item.get_size_display }}){% endif %}</span>
+                <span>{{ item.subtotal|peso }}</span>
+              </div>
+            {% endfor %}
+            <div class="cart-summary-row cart-summary-total">
+              <span>Total</span>
+              <span>{{ order.total_amount|peso }}</span>
             </div>
-          {% endfor %}
-          <div class="cart-summary-row cart-summary-total">
-            <span>Total Amount</span>
-            <span>{{ order.total_amount|peso }}</span>
           </div>
+
+          <p class="text-muted mb-4" style="font-size:0.9rem;">{{ order.get_dining_option_display }}{% if order.notes %} · "{{ order.notes }}"{% endif %}</p>
+
+          <a href="{% url 'shop:order_track_detail' order.id %}" class="btn btn-brand btn-lg w-100 mb-2">
+            <i class="bi bi-geo-alt"></i> Track This Order
+          </a>
+          <a href="{% url 'shop:menu' %}" class="btn btn-brand-outline w-100">
+            <i class="bi bi-arrow-left"></i> Back to Menu
+          </a>
         </div>
       </div>
-
-      <a href="{% url 'shop:menu' %}" class="btn btn-brand btn-lg mt-4">Order More</a>
-      <a href="{% url 'shop:home' %}" class="back-to-menu-link d-block mt-3">Back to Home</a>
     </div>
   </div>
 </section>

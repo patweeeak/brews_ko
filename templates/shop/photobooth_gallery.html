@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+
+{% block title %}My Photobooth Strips — {{ shop_name }}{% endblock %}
+
+{% block content %}
+<section class="checkout-section">
+  <div class="container">
+    <div class="text-center mb-5">
+      <p class="section-eyebrow reveal-fade">Memories</p>
+      <h1 class="section-title reveal-fade">My Photobooth Strips</h1>
+      <p class="section-subtitle reveal-fade">Every strip you've ever made at Brew's Ko, in one place.</p>
+      <a href="{% url 'shop:photobooth' %}" class="btn btn-brand mt-2"><i class="bi bi-camera-fill"></i> Take a New Strip</a>
+    </div>
+
+    {% if strips %}
+      <div class="strip-gallery-grid reveal-fade">
+        {% for strip in strips %}
+          <a href="{% url 'shop:photobooth_detail' strip.id %}" class="strip-gallery-card">
+            <img src="{{ strip.image.url }}" alt="Photobooth strip from {{ strip.created_at|date:'M d, Y' }}">
+            <span class="strip-date">{{ strip.created_at|date:"M d, Y" }}</span>
+          </a>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="empty-state reveal-fade">
+        <i class="bi bi-camera"></i>
+        <p>No strips yet — take your first photobooth strip and it'll show up here!</p>
+      </div>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

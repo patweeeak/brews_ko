@@ -1,0 +1,44 @@
+{% extends 'dashboard/base_dashboard.html' %}
+{% load shop_extras %}
+
+{% block title %}Receipts{% endblock %}
+{% block page_title %}Receipts{% endblock %}
+{% block page_subtitle %}A full copy of every e-receipt issued to customers.{% endblock %}
+
+{% block content %}
+
+<div class="dash-panel">
+  <div class="dash-table-wrap">
+    <table class="dash-table">
+      <thead><tr><th>Receipt #</th><th>Order</th><th>Customer</th><th>Method</th><th>Amount</th><th>Cashier</th><th>Date</th><th>Actions</th></tr></thead>
+      <tbody>
+        {% for payment in payments %}
+        <tr>
+          <td>{{ payment.receipt_number }}</td>
+          <td>#{{ payment.order.id }}</td>
+          <td>{{ payment.order.customer_name }}</td>
+          <td>{% if payment.method == 'gcash' %}<i class="bi bi-phone"></i>{% else %}<i class="bi bi-cash"></i>{% endif %} {{ payment.get_method_display }}</td>
+          <td>{{ payment.amount|peso }}</td>
+          <td>{{ payment.cashier.username|default:"—" }}</td>
+          <td>{{ payment.paid_at|date:"M d, Y g:i A" }}</td>
+          <td><a href="{% url 'dashboard:receipt_detail' payment.id %}" class="dash-icon-btn" title="View"><i class="bi bi-eye"></i></a></td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="8"><div class="dash-empty"><i class="bi bi-receipt-cutoff"></i>No receipts issued yet.</div></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if is_paginated %}
+  <nav class="mt-3">
+    <ul class="pagination justify-content-center">
+      {% if page_obj.has_previous %}<li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}">Previous</a></li>{% endif %}
+      <li class="page-item disabled"><span class="page-link">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span></li>
+      {% if page_obj.has_next %}<li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}">Next</a></li>{% endif %}
+    </ul>
+  </nav>
+  {% endif %}
+</div>
+
+{% endblock %}

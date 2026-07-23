@@ -1,12 +1,18 @@
+import base64
+import binascii
+
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import login as auth_login
 from django.contrib.auth import views as auth_views
 from django.contrib.auth.decorators import login_required
+from django.core.files.base import ContentFile
+from django.core.mail import EmailMessage
 from django.db import transaction
 from django.db.models import Avg, Q
+from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
-from django.urls import reverse_lazy
+from django.urls import reverse, reverse_lazy
 from django.views.decorators.http import require_POST
 
 from .cart import Cart
@@ -16,7 +22,7 @@ from .forms import (
 )
 from .models import (
     Category, CustomerProfile, GamificationSettings, HomePageContent,
-    Order, OrderItem, Product, Review,
+    Order, OrderItem, Payment, PhotoboothStrip, Product, Review,
 )
 
 
@@ -35,6 +41,7 @@ def home(request):
         'categories': categories,
         'store_reviews': store_reviews,
         'store_rating': round(store_rating, 1) if store_rating else 0,
+        'menu_item_count': Product.objects.filter(available=True).count(),
     }
     return render(request, 'shop/home.html', context)
 
@@ -165,6 +172,9 @@ def checkout(request):
                     )
                 order.recalculate_total()
             cart.clear()
+            verified = request.session.get('verified_orders', [])
+            verified.append(order.id)
+            request.session['verified_orders'] = verified
             return redirect('shop:order_success', order_id=order.id)
     else:
         form = CheckoutForm(initial=initial)
@@ -276,8 +286,64 @@ def profile(request):
         'my_reviews': customer_profile.reviews.select_related('product').all(),
         'store_review': customer_profile.reviews.filter(product__isnull=True).first(),
         'store_review_form': ReviewForm() if not customer_profile.reviews.filter(product__isnull=True).exists() else None,
+        'my_receipts': Payment.objects.filter(order__customer_user=request.user).select_related('order').order_by('-paid_at'),
     }
     return render(request, 'shop/profile.html', context)
+
+
+def receipt_detail(request, payment_id):
+    """A customer (or a guest who verified via order tracking) viewing an e-receipt."""
+    payment = get_object_or_404(Payment, id=payment_id)
+    is_owner = request.user.is_authenticated and payment.order.customer_user_id == request.user.id
+    is_verified_guest = payment.order_id in request.session.get('verified_orders', [])
+    if not (is_owner or is_verified_guest):
+        messages.error(request, "We couldn't verify that this receipt belongs to you.")
+        return redirect('shop:track_order')
+    return render(request, 'shop/receipt.html', {'payment': payment, 'order': payment.order})
+
+
+def track_order(request):
+    """
+    Order tracking is based on the current session — a guest automatically
+    sees every order placed in this browser session, no lookup required.
+    A logged-in customer sees their full account order history instead
+    (that's inherently tied to their account, not just the session).
+    """
+    customer_profile = _get_customer_profile(request)
+    if customer_profile:
+        orders = customer_profile.orders.all()
+    else:
+        verified_ids = request.session.get('verified_orders', [])
+        orders = Order.objects.filter(id__in=verified_ids).order_by('-created_at') if verified_ids else Order.objects.none()
+
+    return render(request, 'shop/track_order.html', {'orders': orders})
+
+
+def order_track_detail(request, order_id):
+    """Status/details for one order — owner customer or a session-verified guest only."""
+    order = get_object_or_404(Order, id=order_id)
+    is_owner = request.user.is_authenticated and order.customer_user_id == request.user.id
+    is_verified_guest = order.id in request.session.get('verified_orders', [])
+    if not (is_owner or is_verified_guest):
+        messages.info(request, "That order isn't available to track in your current session.")
+        return redirect('shop:track_order')
+
+    steps = [
+        (Order.STATUS_PENDING, 'Order Placed', 'bi-receipt'),
+        (Order.STATUS_PREPARING, 'Preparing', 'bi-cup-hot'),
+        (Order.STATUS_READY, 'Ready', 'bi-bag-check'),
+        (Order.STATUS_COMPLETED, 'Completed', 'bi-check-circle'),
+    ]
+    order_position = [s[0] for s in steps].index(order.status) if order.status in [s[0] for s in steps] else -1
+    status_steps = [
+        {
+            'label': label, 'icon': icon,
+            'state': 'done' if i < order_position else 'current' if i == order_position else 'upcoming',
+        }
+        for i, (key, label, icon) in enumerate(steps)
+    ]
+
+    return render(request, 'shop/order_track_detail.html', {'order': order, 'status_steps': status_steps})
 
 
 @login_required(login_url='shop:login')
@@ -346,3 +412,108 @@ def delete_review(request, review_id):
     review.delete()
     messages.info(request, 'Review deleted.')
     return redirect(request.POST.get('next') or 'shop:profile')
+
+
+# ---------------------------------------------------------------------------
+# Photobooth — a fun customer-only extra. Camera capture and the strip
+# composite (branding, layout) all happen client-side in the browser via
+# getUserMedia + Canvas; the server just stores the finished PNG.
+# ---------------------------------------------------------------------------
+
+@login_required(login_url='shop:login')
+def photobooth(request):
+    """The camera capture page — up to 3 photos, composited into a 2x6" strip."""
+    if not _get_customer_profile(request):
+        return redirect('shop:profile')
+    return render(request, 'shop/photobooth.html')
+
+
+@login_required(login_url='shop:login')
+@require_POST
+def photobooth_save(request):
+    """Receives the finished strip (a data: URL PNG built in the browser) and saves it."""
+    customer_profile = _get_customer_profile(request)
+    if not customer_profile:
+        return JsonResponse({'error': 'Only customer accounts can save photobooth strips.'}, status=403)
+
+    data_url = request.POST.get('image_data', '')
+    if not data_url.startswith('data:image/'):
+        return JsonResponse({'error': 'Missing or invalid image data.'}, status=400)
+
+    try:
+        header, encoded = data_url.split(',', 1)
+        file_bytes = base64.b64decode(encoded)
+    except (ValueError, binascii.Error):
+        return JsonResponse({'error': "Couldn't decode that image."}, status=400)
+
+    if len(file_bytes) > 8 * 1024 * 1024:
+        return JsonResponse({'error': 'Image too large.'}, status=400)
+
+    strip = PhotoboothStrip.objects.create(customer=customer_profile)
+    strip.image.save(f"strip_{strip.id}.png", ContentFile(file_bytes), save=True)
+
+    return JsonResponse({'success': True, 'redirect_url': reverse('shop:photobooth_detail', args=[strip.id])})
+
+
+@login_required(login_url='shop:login')
+def photobooth_gallery(request):
+    """The customer's saved strips — their photobooth 'memories'."""
+    customer_profile = _get_customer_profile(request)
+    if not customer_profile:
+        return redirect('shop:profile')
+    strips = customer_profile.photobooth_strips.all()
+    return render(request, 'shop/photobooth_gallery.html', {'strips': strips})
+
+
+@login_required(login_url='shop:login')
+def photobooth_detail(request, strip_id):
+    customer_profile = _get_customer_profile(request)
+    strip = get_object_or_404(PhotoboothStrip, id=strip_id, customer=customer_profile)
+    return render(request, 'shop/photobooth_detail.html', {'strip': strip})
+
+
+@login_required(login_url='shop:login')
+@require_POST
+def photobooth_email(request, strip_id):
+    """Emails the strip to the customer's own registered email address."""
+    customer_profile = _get_customer_profile(request)
+    strip = get_object_or_404(PhotoboothStrip, id=strip_id, customer=customer_profile)
+
+    to_email = request.user.email
+    if not to_email:
+        messages.error(request, "Add an email address to your profile first, then try again.")
+        return redirect('shop:photobooth_detail', strip_id=strip.id)
+
+    email = EmailMessage(
+        subject="Your Brew's Ko Photobooth Strip",
+        body=(
+            f"Hi {customer_profile.full_name},\n\n"
+            f"Here's the photobooth strip you made at Brew's Ko — enjoy the memory!\n\n"
+            f"— Brew's Ko"
+        ),
+        from_email=settings.DEFAULT_FROM_EMAIL,
+        to=[to_email],
+    )
+    try:
+        strip.image.open('rb')
+        email.attach(strip.image.name.rsplit('/', 1)[-1], strip.image.read(), 'image/png')
+    finally:
+        strip.image.close()
+
+    try:
+        email.send(fail_silently=False)
+        messages.success(request, f"Sent to {to_email}!")
+    except Exception:
+        messages.error(request, "Couldn't send that email right now — please try again later.")
+
+    return redirect('shop:photobooth_detail', strip_id=strip.id)
+
+
+@login_required(login_url='shop:login')
+@require_POST
+def photobooth_delete(request, strip_id):
+    customer_profile = _get_customer_profile(request)
+    strip = get_object_or_404(PhotoboothStrip, id=strip_id, customer=customer_profile)
+    strip.delete()
+    messages.info(request, 'Strip deleted.')
+    return redirect('shop:photobooth_gallery')

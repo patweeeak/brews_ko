@@ -1,0 +1,42 @@
+{% extends 'base.html' %}
+
+{% block title %}Photobooth Strip — {{ shop_name }}{% endblock %}
+
+{% block content %}
+<section class="checkout-section">
+  <div class="container">
+    <a href="{% url 'shop:photobooth_gallery' %}" class="back-to-menu-link"><i class="bi bi-arrow-left"></i> Back to My Strips</a>
+
+    <div class="text-center mt-4">
+      <p class="text-muted mb-3">{{ strip.created_at|date:"M d, Y g:i A" }}</p>
+      <img src="{{ strip.image.url }}" alt="Photobooth strip" class="strip-detail-image reveal-fade">
+
+      <div class="mt-4 d-flex justify-content-center gap-2 flex-wrap">
+        <a href="{{ strip.image.url }}" download="brewsko-photobooth-{{ strip.id }}.png" class="btn btn-brand">
+          <i class="bi bi-download"></i> Download
+        </a>
+
+        <form method="post" action="{% url 'shop:photobooth_email' strip.id %}" class="d-inline">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-brand-outline">
+            <i class="bi bi-envelope"></i> Email Me This Strip
+          </button>
+        </form>
+
+        <form method="post" action="{% url 'shop:photobooth_delete' strip.id %}" onsubmit="return confirm('Delete this strip? This can\'t be undone.');" class="d-inline">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-brand-outline">
+            <i class="bi bi-trash3"></i> Delete
+          </button>
+        </form>
+      </div>
+
+      {% if not request.user.email %}
+        <p class="text-muted mt-3" style="font-size:0.85rem;">
+          <i class="bi bi-info-circle"></i> Add an email to your <a href="{% url 'shop:profile' %}">profile</a> to enable emailing strips to yourself.
+        </p>
+      {% endif %}
+    </div>
+  </div>
+</section>
+{% endblock %}

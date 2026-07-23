@@ -72,6 +72,9 @@ class HomePageContent(models.Model):
     hero_subtitle = models.CharField(max_length=255, blank=True,
                                       default="Discover handcrafted coffee and delightful treats at Brew's Ko.")
     hero_image = models.ImageField(upload_to='homepage/', blank=True, null=True)
+    years_roasting = models.PositiveIntegerField(
+        default=10, help_text="Shown in the hero stats bar (e.g. '10+ Years Roasting'). Menu count and rating are computed automatically."
+    )
 
     about_eyebrow = models.CharField(max_length=150, blank=True, default="Our Story")
     about_title = models.CharField(max_length=255, blank=True,
@@ -333,6 +336,45 @@ class CustomerProfile(models.Model):
         return self.favorites.count()
 
 
+class PhotoboothStrip(models.Model):
+    """
+    A saved 2x6" photobooth strip (up to 3 photos, composited client-side
+    with Brew's Ko branding) belonging to one customer. Acts as a 'memory'
+    the customer can revisit, download, or email to themselves.
+    """
+    customer = models.ForeignKey(CustomerProfile, on_delete=models.CASCADE, related_name='photobooth_strips')
+    image = models.ImageField(upload_to='photobooth/')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = "Photobooth Strip"
+        verbose_name_plural = "Photobooth Strips"
+
+    def __str__(self):
+        return f"Strip by {self.customer.full_name} ({self.created_at:%Y-%m-%d})"
+
+
+class CashierProfile(models.Model):
+    """
+    Marks a User account as the 'cashier' user type — created by admin
+    from the dashboard, never self-signup. Cashier accounts have
+    is_staff=True (so they can log in the same way as other staff) but
+    the dashboard restricts them to the Orders & Payments view only
+    (see shop.dashboard_views.StaffRequiredMixin).
+    """
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='cashier_profile')
+    full_name = models.CharField(max_length=150)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Cashier"
+        verbose_name_plural = "Cashiers"
+
+    def __str__(self):
+        return self.full_name or self.user.username
+
+
 class Review(models.Model):
     """
     A star rating + comment left by a customer, for either a specific
@@ -409,6 +451,10 @@ class Order(models.Model):
         self.total_amount = total
         self.save(update_fields=['total_amount'])
 
+    @property
+    def is_paid(self):
+        return hasattr(self, 'payment')
+
 
 class OrderItem(models.Model):
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='items')
@@ -432,6 +478,47 @@ class OrderItem(models.Model):
         super().save(*args, **kwargs)
 
 
+class Payment(models.Model):
+    """
+    An e-receipt recording how (and by whom) an order was paid. Created
+    by a cashier from the dashboard. Visible to the customer (in their
+    account, among all their receipts) and to admin (full copy of every
+    receipt). One order can only be paid once (OneToOne).
+    """
+    METHOD_CASH = 'cash'
+    METHOD_GCASH = 'gcash'
+    METHOD_CHOICES = [
+        (METHOD_CASH, 'Cash'),
+        (METHOD_GCASH, 'GCash'),
+    ]
+
+    order = models.OneToOneField(Order, on_delete=models.CASCADE, related_name='payment')
+    method = models.CharField(max_length=10, choices=METHOD_CHOICES)
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    reference_number = models.CharField(
+        max_length=50, blank=True,
+        help_text="GCash transaction reference number (required for GCash payments)."
+    )
+    cashier = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='payments_processed'
+    )
+    receipt_number = models.CharField(max_length=30, unique=True, blank=True, editable=False)
+    paid_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-paid_at']
+
+    def __str__(self):
+        return self.receipt_number or f"Receipt for Order #{self.order_id}"
+
+    def save(self, *args, **kwargs):
+        is_new = self.pk is None
+        super().save(*args, **kwargs)
+        if is_new and not self.receipt_number:
+            self.receipt_number = f"BK-{self.paid_at.strftime('%Y%m%d')}-{self.pk:05d}"
+            super().save(update_fields=['receipt_number'])
+
+
 class ActivityLog(models.Model):
     """
     Lightweight audit trail powering the 'Recent Activity' feed on the
@@ -445,6 +532,7 @@ class ActivityLog(models.Model):
     ACTION_ORDER_COMPLETED = 'order_completed'
     ACTION_ORDER_UPDATED = 'order_updated'
     ACTION_CUSTOMER_JOINED = 'customer_joined'
+    ACTION_PAYMENT_RECEIVED = 'payment_received'
 
     ACTION_CHOICES = [
         (ACTION_PRODUCT_ADDED, 'Product added'),
@@ -455,6 +543,7 @@ class ActivityLog(models.Model):
         (ACTION_ORDER_COMPLETED, 'Order completed'),
         (ACTION_ORDER_UPDATED, 'Order updated'),
         (ACTION_CUSTOMER_JOINED, 'Customer joined'),
+        (ACTION_PAYMENT_RECEIVED, 'Payment received'),
     ]
 
     ACTION_ICONS = {
@@ -466,6 +555,7 @@ class ActivityLog(models.Model):
         ACTION_ORDER_COMPLETED: 'bi-check2-circle',
         ACTION_ORDER_UPDATED: 'bi-arrow-repeat',
         ACTION_CUSTOMER_JOINED: 'bi-person-plus-fill',
+        ACTION_PAYMENT_RECEIVED: 'bi-receipt-cutoff',
     }
 
     action = models.CharField(max_length=30, choices=ACTION_CHOICES)
@@ -513,6 +603,15 @@ def log_customer_activity(sender, instance, created, **kwargs):
         ActivityLog.objects.create(
             action=ActivityLog.ACTION_CUSTOMER_JOINED,
             description=f"New customer '{instance.full_name}' signed up.",
+        )
+
+
+@receiver(post_save, sender=Payment)
+def log_payment_activity(sender, instance, created, **kwargs):
+    if created:
+        ActivityLog.objects.create(
+            action=ActivityLog.ACTION_PAYMENT_RECEIVED,
+            description=f"Payment received for Order #{instance.order_id} via {instance.get_method_display()}.",
         )
 
 

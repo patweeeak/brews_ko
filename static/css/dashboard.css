@@ -456,6 +456,24 @@ body.dashboard-body {
   background: var(--white);
 }
 
+/* ---------- E-receipt ---------- */
+.receipt-card {
+  max-width: 420px;
+  margin: 0 auto;
+  background: var(--white);
+  border: 1px dashed var(--dash-border);
+  border-radius: var(--radius-md);
+  padding: 1.75rem;
+  font-family: 'Courier New', monospace;
+}
+.receipt-card h3 { text-align: center; font-family: var(--font-display); margin-bottom: 0.2rem; color: var(--coffee-dark); }
+.receipt-card .receipt-sub { text-align: center; color: var(--ink-soft); font-size: 0.8rem; margin-bottom: 1rem; }
+.receipt-card hr { border-top: 1px dashed var(--dash-border); }
+.receipt-card table { width: 100%; font-size: 0.88rem; }
+.receipt-card table td { padding: 0.2rem 0; }
+.receipt-card .receipt-total-row td { font-weight: 700; border-top: 1px dashed var(--dash-border); padding-top: 0.5rem; }
+.receipt-card .receipt-meta { font-size: 0.8rem; color: var(--ink-soft); }
+
 /* ---------- Empty state ---------- */
 .dash-empty { text-align: center; padding: 2rem 1rem; color: var(--ink-soft); }
 .dash-empty i { font-size: 2rem; color: var(--beige-dark); display: block; margin-bottom: 0.5rem; }

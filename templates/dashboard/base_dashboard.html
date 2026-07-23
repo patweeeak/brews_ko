@@ -38,33 +38,45 @@
     </div>
 
     <nav class="dash-nav">
-      <a href="{% url 'dashboard:index' %}" class="dash-nav-link {% if request.resolver_match.url_name == 'index' %}active{% endif %}">
-        <i class="bi bi-speedometer2"></i> Dashboard
-      </a>
-      <a href="{% url 'dashboard:orders' %}" class="dash-nav-link {% if request.resolver_match.url_name == 'orders' or request.resolver_match.url_name == 'order_detail' %}active{% endif %}">
-        <i class="bi bi-receipt"></i> Orders
-      </a>
-      <a href="{% url 'dashboard:products' %}" class="dash-nav-link {% if request.resolver_match.url_name == 'products' %}active{% endif %}">
-        <i class="bi bi-cup-straw"></i> Products
-      </a>
-      <a href="{% url 'dashboard:categories' %}" class="dash-nav-link {% if request.resolver_match.url_name == 'categories' %}active{% endif %}">
-        <i class="bi bi-tags"></i> Categories
-      </a>
-      <a href="{% url 'dashboard:customers' %}" class="dash-nav-link {% if request.resolver_match.url_name == 'customers' %}active{% endif %}">
-        <i class="bi bi-people"></i> Customers
-      </a>
-      <a href="{% url 'dashboard:homepage' %}" class="dash-nav-link {% if request.resolver_match.url_name == 'homepage' %}active{% endif %}">
-        <i class="bi bi-window"></i> Homepage
-      </a>
-      <a href="{% url 'dashboard:gamification' %}" class="dash-nav-link {% if request.resolver_match.url_name == 'gamification' %}active{% endif %}">
-        <i class="bi bi-stars"></i> Gamification
-      </a>
-      <a href="{% url 'dashboard:reports' %}" class="dash-nav-link {% if request.resolver_match.url_name == 'reports' %}active{% endif %}">
-        <i class="bi bi-graph-up-arrow"></i> Reports
-      </a>
-      <a href="{% url 'dashboard:settings' %}" class="dash-nav-link {% if request.resolver_match.url_name == 'settings' %}active{% endif %}">
-        <i class="bi bi-gear"></i> Settings
-      </a>
+      {% if is_cashier %}
+        <a href="{% url 'dashboard:cashier' %}" class="dash-nav-link active">
+          <i class="bi bi-cash-coin"></i> Orders & Payments
+        </a>
+      {% else %}
+        <a href="{% url 'dashboard:index' %}" class="dash-nav-link {% if request.resolver_match.url_name == 'index' %}active{% endif %}">
+          <i class="bi bi-speedometer2"></i> Dashboard
+        </a>
+        <a href="{% url 'dashboard:orders' %}" class="dash-nav-link {% if request.resolver_match.url_name == 'orders' or request.resolver_match.url_name == 'order_detail' %}active{% endif %}">
+          <i class="bi bi-receipt"></i> Orders
+        </a>
+        <a href="{% url 'dashboard:products' %}" class="dash-nav-link {% if request.resolver_match.url_name == 'products' %}active{% endif %}">
+          <i class="bi bi-cup-straw"></i> Products
+        </a>
+        <a href="{% url 'dashboard:categories' %}" class="dash-nav-link {% if request.resolver_match.url_name == 'categories' %}active{% endif %}">
+          <i class="bi bi-tags"></i> Categories
+        </a>
+        <a href="{% url 'dashboard:customers' %}" class="dash-nav-link {% if request.resolver_match.url_name == 'customers' %}active{% endif %}">
+          <i class="bi bi-people"></i> Customers
+        </a>
+        <a href="{% url 'dashboard:cashiers' %}" class="dash-nav-link {% if request.resolver_match.url_name == 'cashiers' %}active{% endif %}">
+          <i class="bi bi-person-badge"></i> Cashiers
+        </a>
+        <a href="{% url 'dashboard:receipts' %}" class="dash-nav-link {% if request.resolver_match.url_name == 'receipts' or request.resolver_match.url_name == 'receipt_detail' %}active{% endif %}">
+          <i class="bi bi-receipt-cutoff"></i> Receipts
+        </a>
+        <a href="{% url 'dashboard:homepage' %}" class="dash-nav-link {% if request.resolver_match.url_name == 'homepage' %}active{% endif %}">
+          <i class="bi bi-window"></i> Homepage
+        </a>
+        <a href="{% url 'dashboard:gamification' %}" class="dash-nav-link {% if request.resolver_match.url_name == 'gamification' %}active{% endif %}">
+          <i class="bi bi-stars"></i> Gamification
+        </a>
+        <a href="{% url 'dashboard:reports' %}" class="dash-nav-link {% if request.resolver_match.url_name == 'reports' %}active{% endif %}">
+          <i class="bi bi-graph-up-arrow"></i> Reports
+        </a>
+        <a href="{% url 'dashboard:settings' %}" class="dash-nav-link {% if request.resolver_match.url_name == 'settings' %}active{% endif %}">
+          <i class="bi bi-gear"></i> Settings
+        </a>
+      {% endif %}
     </nav>
 
     <div class="dash-sidebar-footer">
@@ -94,7 +106,7 @@
           <div class="avatar">{{ request.user.get_full_name|default:"Admin"|first|upper }}</div>
           <div class="user-meta">
             <strong>{{ request.user.get_full_name|default:"Admin" }}</strong>
-            <span>{% if request.user.is_superuser %}Superuser{% else %}Staff{% endif %}</span>
+            <span>{% if request.user.is_superuser %}Superuser{% elif is_cashier %}Cashier{% else %}Staff{% endif %}</span>
           </div>
         </div>
       </div>

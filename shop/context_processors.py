@@ -12,6 +12,8 @@ def cart_summary(request):
     if request.user.is_authenticated and not request.user.is_staff:
         customer_profile = getattr(request.user, 'customer_profile', None)
 
+    is_cashier = request.user.is_authenticated and hasattr(request.user, 'cashier_profile')
+
     return {
         'cart_item_count': len(cart),
         'shop_name': shop.name,
@@ -24,4 +26,5 @@ def cart_summary(request):
         'gamification_enabled': gamification.enabled,
         'gamification_program_name': gamification.program_name,
         'customer_profile': customer_profile,
+        'is_cashier': is_cashier,
     }

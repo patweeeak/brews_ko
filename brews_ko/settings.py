@@ -121,3 +121,17 @@ SHOP_INSTAGRAM = "https://instagram.com/brewsko"
 # lands the user back on the dashboard page they originally requested.
 LOGIN_URL = '/admin/login/'
 LOGIN_REDIRECT_URL = '/dashboard/'
+
+# ---------------------------------------------------------------------------
+# Email (used by the customer Photobooth's "email me this strip" feature)
+# ---------------------------------------------------------------------------
+# Defaults to printing emails to the console — nothing is actually delivered
+# until real SMTP credentials are supplied via environment variables (e.g.
+# a Gmail app password, SendGrid, Mailgun, etc.).
+EMAIL_BACKEND = os.environ.get('DJANGO_EMAIL_BACKEND', 'django.core.mail.backends.console.EmailBackend')
+EMAIL_HOST = os.environ.get('DJANGO_EMAIL_HOST', '')
+EMAIL_PORT = int(os.environ.get('DJANGO_EMAIL_PORT', '587'))
+EMAIL_HOST_USER = os.environ.get('DJANGO_EMAIL_HOST_USER', '')
+EMAIL_HOST_PASSWORD = os.environ.get('DJANGO_EMAIL_HOST_PASSWORD', '')
+EMAIL_USE_TLS = os.environ.get('DJANGO_EMAIL_USE_TLS', 'True') == 'True'
+DEFAULT_FROM_EMAIL = os.environ.get('DJANGO_DEFAULT_FROM_EMAIL', "Brew's Ko <noreply@brewsko.ph>")

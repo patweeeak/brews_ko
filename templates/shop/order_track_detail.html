@@ -1,0 +1,67 @@
+{% extends 'base.html' %}
+{% load shop_extras %}
+
+{% block title %}Order #{{ order.id }} — {{ shop_name }}{% endblock %}
+
+{% block content %}
+<section class="checkout-section">
+  <div class="container">
+    <div class="text-center mb-4">
+      <p class="section-eyebrow reveal-fade">Order #{{ order.id }}</p>
+      <h1 class="section-title reveal-fade">
+        {% if order.status == 'cancelled' %}This order was cancelled{% else %}Tracking Your Order{% endif %}
+      </h1>
+      <p class="section-subtitle reveal-fade">Placed {{ order.created_at|date:"M d, Y g:i A" }}</p>
+    </div>
+
+    {% if order.status != 'cancelled' %}
+      <div class="order-stepper reveal-fade">
+        {% for step in status_steps %}
+          <div class="order-step {{ step.state }}">
+            <div class="dot"><i class="bi {{ step.icon }}"></i></div>
+            <span>{{ step.label }}</span>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="empty-state reveal-fade">
+        <i class="bi bi-x-circle"></i>
+        <p>This order was cancelled. If you have questions, please contact us.</p>
+      </div>
+    {% endif %}
+
+    <div class="row justify-content-center mt-4">
+      <div class="col-12 col-lg-7">
+        <div class="checkout-form-card reveal-fade mb-3">
+          <h3><i class="bi bi-basket"></i> Order Details</h3>
+          {% for item in order.items.all %}
+            <div class="cart-summary-row">
+              <span>{{ item.quantity }} × {{ item.product_name }}{% if item.size %} ({{ item.get_size_display }}){% endif %}</span>
+              <span>{{ item.subtotal|peso }}</span>
+            </div>
+          {% endfor %}
+          <div class="cart-summary-row cart-summary-total">
+            <span>Total</span>
+            <span>{{ order.total_amount|peso }}</span>
+          </div>
+        </div>
+
+        <div class="checkout-form-card reveal-fade">
+          <h3><i class="bi bi-info-circle"></i> Order Info</h3>
+          <p class="mb-1"><strong>Dining:</strong> {{ order.get_dining_option_display }}</p>
+          {% if order.notes %}<p class="mb-1"><strong>Notes:</strong> {{ order.notes }}</p>{% endif %}
+          <p class="mb-1">
+            <strong>Payment:</strong>
+            {% if order.is_paid %}
+              <span class="text-success">Paid via {{ order.payment.get_method_display }}</span>
+              — <a href="{% url 'shop:receipt_detail' order.payment.id %}">View Receipt</a>
+            {% else %}
+              <span class="text-muted">Not yet paid</span>
+            {% endif %}
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

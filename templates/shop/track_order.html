@@ -1,0 +1,51 @@
+{% extends 'base.html' %}
+{% load shop_extras %}
+
+{% block title %}Track Your Orders — {{ shop_name }}{% endblock %}
+
+{% block content %}
+<section class="checkout-section">
+  <div class="container">
+    <div class="text-center mb-5">
+      <p class="section-eyebrow reveal-fade">Order Status</p>
+      <h1 class="section-title reveal-fade">Track Your Orders</h1>
+      <p class="section-subtitle reveal-fade">
+        {% if customer_profile %}
+          Every order on your account.
+        {% else %}
+          Orders you've placed in this browser session.
+        {% endif %}
+      </p>
+    </div>
+
+    <div class="row justify-content-center">
+      <div class="col-12 col-lg-7">
+        {% if orders %}
+          <div class="checkout-form-card reveal-fade">
+            {% for order in orders %}
+              <div class="cart-summary-row">
+                <span>
+                  <a href="{% url 'shop:order_track_detail' order.id %}"><strong>#{{ order.id }}</strong></a>
+                  — <span class="status-pill status-{{ order.status }}" style="font-size:0.72rem;">{{ order.get_status_display }}</span>
+                  <span class="text-muted d-block d-sm-inline"> {{ order.created_at|date:"M d, Y g:i A" }}</span>
+                </span>
+                <span>{{ order.total_amount|peso }} &nbsp; <a href="{% url 'shop:order_track_detail' order.id %}">View</a></span>
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="empty-state reveal-fade">
+            <i class="bi bi-bag-x"></i>
+            {% if customer_profile %}
+              <p>You haven't placed any orders yet.</p>
+            {% else %}
+              <p>No orders in this session yet. Once you check out, your order will show up here automatically.</p>
+            {% endif %}
+            <a href="{% url 'shop:menu' %}" class="btn btn-brand mt-3">Browse the Menu</a>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,78 @@
+{% extends 'dashboard/base_dashboard.html' %}
+{% load shop_extras %}
+
+{% block title %}Orders & Payments{% endblock %}
+{% block page_title %}Orders & Payments{% endblock %}
+{% block page_subtitle %}Record a payment to generate an order's e-receipt.{% endblock %}
+
+{% block content %}
+
+<div class="dash-panel">
+  <div class="dash-table-wrap">
+    <table class="dash-table">
+      <thead>
+        <tr><th>Order ID</th><th>Customer</th><th>Dining</th><th>Total</th><th>Order Status</th><th>Payment</th><th>Actions</th></tr>
+      </thead>
+      <tbody>
+        {% for order in orders %}
+        <tr>
+          <td>#{{ order.id }}</td>
+          <td>{{ order.customer_name }}<br><span class="text-muted" style="font-size:0.78rem;">{{ order.contact_number }}</span></td>
+          <td><i class="bi {% if order.dining_option == 'for_here' %}bi-cup-hot{% else %}bi-bag-check{% endif %}"></i> {{ order.get_dining_option_display }}</td>
+          <td>{{ order.total_amount|peso }}</td>
+          <td><span class="status-pill status-{{ order.status }}">{{ order.get_status_display }}</span></td>
+          <td>
+            {% if order.is_paid %}
+              <span class="status-pill status-completed"><i class="bi bi-check-circle"></i> Paid ({{ order.payment.get_method_display }})</span>
+              <a href="{% url 'dashboard:receipt_detail' order.payment.id %}" class="d-block mt-1" style="font-size:0.78rem;">View Receipt</a>
+            {% else %}
+              <span class="status-pill status-pending"><i class="bi bi-hourglass-split"></i> Unpaid</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if not order.is_paid %}
+              <button type="button" class="btn-quick solid" data-bs-toggle="collapse" data-bs-target="#pay-{{ order.id }}">
+                <i class="bi bi-cash-coin"></i> Pay
+              </button>
+            {% endif %}
+          </td>
+        </tr>
+        {% if not order.is_paid %}
+        <tr class="collapse" id="pay-{{ order.id }}">
+          <td colspan="7">
+            <form method="post" action="{% url 'dashboard:record_payment' order.id %}" class="payment-form">
+              {% csrf_token %}
+              <div class="d-flex flex-wrap align-items-start gap-4">
+                <div>
+                  <label class="form-label fw-semibold d-block">Payment Method</label>
+                  <div class="dining-option-choices">
+                    {% for radio in payment_form.method %}
+                      <label class="dining-option-pill">
+                        {{ radio.tag }}
+                        <span>{% if radio.data.value == 'gcash' %}<i class="bi bi-phone"></i>{% else %}<i class="bi bi-cash"></i>{% endif %} {{ radio.choice_label }}</span>
+                      </label>
+                    {% endfor %}
+                  </div>
+                </div>
+                <div>
+                  <label class="form-label fw-semibold">GCash Reference # <span class="text-muted">(if applicable)</span></label>
+                  <input type="text" name="reference_number" class="form-control" placeholder="e.g. 1234567890123">
+                </div>
+                <div class="align-self-end">
+                  <input type="hidden" name="amount" value="{{ order.total_amount }}">
+                  <button type="submit" class="btn-quick solid"><i class="bi bi-check2-circle"></i> Confirm Payment of {{ order.total_amount|peso }}</button>
+                </div>
+              </div>
+            </form>
+          </td>
+        </tr>
+        {% endif %}
+        {% empty %}
+        <tr><td colspan="7"><div class="dash-empty"><i class="bi bi-inbox"></i>No active orders right now.</div></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% endblock %}

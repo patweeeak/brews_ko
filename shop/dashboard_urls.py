@@ -19,6 +19,14 @@ urlpatterns = [
 
     path('customers/', views.CustomerListView.as_view(), name='customers'),
 
+    path('cashier/', views.CashierOrdersView.as_view(), name='cashier'),
+    path('cashier/pay/<int:order_id>/', views.RecordPaymentView.as_view(), name='record_payment'),
+    path('cashiers/', views.CashierManagementView.as_view(), name='cashiers'),
+    path('cashiers/<int:pk>/delete/', views.CashierDeleteView.as_view(), name='cashier_delete'),
+
+    path('receipts/', views.ReceiptListView.as_view(), name='receipts'),
+    path('receipts/<int:pk>/', views.ReceiptDetailView.as_view(), name='receipt_detail'),
+
     path('homepage/', views.HomePageContentUpdateView.as_view(), name='homepage'),
     path('homepage/reviews/<int:pk>/delete/', views.ReviewDeleteView.as_view(), name='review_delete'),
 
